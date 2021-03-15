@@ -1,0 +1,16 @@
+## @file
+#  Ext2 Package
+#
+#  Ext2 Driver
+#  Copyright (c) 2021 Pedro Falcato
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = Ext2Pkg
+  PACKAGE_UNI_FILE               = Ext2Pkg.uni
+  PACKAGE_GUID                   = 6B4BF998-668B-46D3-BCFA-971F99F8708C
+  PACKAGE_VERSION                = 0.1

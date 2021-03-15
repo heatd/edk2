@@ -1,0 +1,68 @@
+## @file
+#  Ext2 Package
+#
+#  Ext2 Driver
+#  Copyright (c) 2021 Pedro Falcato
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = Ext2
+  MODULE_UNI_FILE                = Ext2.uni
+  FILE_GUID                      = 75F2B676-D73B-45CB-B7C1-303C7F4E6FD6
+  MODULE_TYPE                    = UEFI_DRIVER
+  VERSION_STRING                 = 1.0
+
+  ENTRY_POINT                    = Ext2EntryPoint
+  UNLOAD_IMAGE                   = Ext2Unload
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 EBC
+#
+#  DRIVER_BINDING                =  gExtDriverBinding
+#  COMPONENT_NAME                =  gExtComponentName
+#  COMPONENT_NAME2               =  gExtComponentName2
+#
+
+[Sources]
+  Main.c
+  Partition.c
+  DiskUtil.c
+  Superblock.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiRuntimeServicesTableLib
+  UefiBootServicesTableLib
+  MemoryAllocationLib
+  BaseMemoryLib
+  BaseLib
+  UefiLib
+  UefiDriverEntryPoint
+  DebugLib
+  PcdLib
+
+[Guids]
+  gEfiFileInfoGuid                      ## SOMETIMES_CONSUMES   ## UNDEFINED
+  gEfiFileSystemInfoGuid                ## SOMETIMES_CONSUMES   ## UNDEFINED
+  gEfiFileSystemVolumeLabelInfoIdGuid   ## SOMETIMES_CONSUMES   ## UNDEFINED
+
+[Protocols]
+  gEfiDiskIoProtocolGuid                ## TO_START
+  gEfiDiskIo2ProtocolGuid               ## TO_START
+  gEfiBlockIoProtocolGuid               ## TO_START
+  gEfiSimpleFileSystemProtocolGuid      ## BY_START
+  gEfiUnicodeCollationProtocolGuid      ## TO_START
+  gEfiUnicodeCollation2ProtocolGuid     ## TO_START
+
+[Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLang           ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang   ## SOMETIMES_CONSUMES

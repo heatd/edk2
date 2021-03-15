@@ -1,0 +1,13 @@
+## @file
+#  Ext2 Package
+#
+#  Ext2 Driver
+#  Copyright (c) 2021 Pedro Falcato
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+#string STR_PACKAGE_ABSTRACT            #language en-US "Module implementations for the EXT2 file system"
+
+#string STR_PACKAGE_DESCRIPTION         #language en-US "This Package contains an EXT2 filesystem driver for UEFI."
