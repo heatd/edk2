@@ -5,12 +5,12 @@
  * 
  */
 
-#include "Ext2.h"
+#include "Ext4.h"
 
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt2DriverNameTable[] = {
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt4DriverNameTable[] = {
   {
     "eng;en",
-    L"Ext2 File System Driver"
+    L"Ext4 File System Driver"
   },
   {
     NULL,
@@ -18,10 +18,10 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt2DriverNameTable[] = 
   }
 };
 
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt2ControllerNameTable[] = {
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt4ControllerNameTable[] = {
   {
     "eng;en",
-    L"Ext2 File System"
+    L"Ext4 File System"
   },
   {
     NULL,
@@ -29,11 +29,11 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt2ControllerNameTable[
   }
 };
 
-extern EFI_COMPONENT_NAME_PROTOCOL gExt2ComponentName;
+extern EFI_COMPONENT_NAME_PROTOCOL gExt4ComponentName;
 
 EFI_STATUS
 EFIAPI
-Ext2ComponentNameGetControllerName (
+Ext4ComponentNameGetControllerName (
   IN  EFI_COMPONENT_NAME_PROTOCOL                     *This,
   IN  EFI_HANDLE                                      ControllerHandle,
   IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
@@ -44,14 +44,14 @@ Ext2ComponentNameGetControllerName (
   // TODO: Do we need to test whether we're managing the handle, like FAT does?
   return LookupUnicodeString2(Language,
                               This->SupportedLanguages,
-                              mExt2ControllerNameTable,
+                              mExt4ControllerNameTable,
                               ControllerName,
-                              (BOOLEAN)(This == &gExt2ComponentName));
+                              (BOOLEAN)(This == &gExt4ComponentName));
 }
 
 EFI_STATUS
 EFIAPI
-Ext2ComponentNameGetDriverName (
+Ext4ComponentNameGetDriverName (
   IN  EFI_COMPONENT_NAME_PROTOCOL  *This,
   IN  CHAR8                        *Language,
   OUT CHAR16                       **DriverName
@@ -59,38 +59,38 @@ Ext2ComponentNameGetDriverName (
 {
   return LookupUnicodeString2(Language,
                               This->SupportedLanguages,
-                              mExt2DriverNameTable,
+                              mExt4DriverNameTable,
                               DriverName,
-                              (BOOLEAN)(This == &gExt2ComponentName));
+                              (BOOLEAN)(This == &gExt4ComponentName));
   // TODO: What does this last parameter? Are we testing whether we're NAME or NAME2? Investigate.
 }
 
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL  gExt2ComponentName = {
-  Ext2ComponentNameGetDriverName,
-  Ext2ComponentNameGetControllerName,
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL  gExt4ComponentName = {
+  Ext4ComponentNameGetDriverName,
+  Ext4ComponentNameGetControllerName,
   "eng"
 };
 
 //
 // EFI Component Name 2 Protocol
 //
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME2_PROTOCOL gExt2ComponentName2 = {
-  (EFI_COMPONENT_NAME2_GET_DRIVER_NAME) Ext2ComponentNameGetDriverName,
-  (EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME) Ext2ComponentNameGetControllerName,
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME2_PROTOCOL gExt4ComponentName2 = {
+  (EFI_COMPONENT_NAME2_GET_DRIVER_NAME) Ext4ComponentNameGetDriverName,
+  (EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME) Ext4ComponentNameGetControllerName,
   "en"
 };
 
-EFI_STATUS EFIAPI Ext2IsBindingSupported (
+EFI_STATUS EFIAPI Ext4IsBindingSupported (
   IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
   IN EFI_HANDLE ControllerHandle,
   IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL);
 
-EFI_STATUS EFIAPI Ext2Bind (
+EFI_STATUS EFIAPI Ext4Bind (
   IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
   IN EFI_HANDLE ControllerHandle,
   IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL);
 
-EFI_STATUS EFIAPI Ext2Stop (
+EFI_STATUS EFIAPI Ext4Stop (
   IN EFI_DRIVER_BINDING_PROTOCOL *This,
   IN EFI_HANDLE ControllerHandle,
   IN UINTN NumberOfChildren,
@@ -103,33 +103,34 @@ EFI_STATUS EFIAPI Ext2Stop (
 
 EFI_STATUS
 EFIAPI
-Ext2Unload (IN EFI_HANDLE ImageHandle)
+Ext4Unload (IN EFI_HANDLE ImageHandle)
 {
   // TODO: Implement
   return EFI_SUCCESS;
 }
 
-EFI_DRIVER_BINDING_PROTOCOL gExt2BindingProtocol = 
+EFI_DRIVER_BINDING_PROTOCOL gExt4BindingProtocol = 
 {
-	Ext2IsBindingSupported,
-	Ext2Bind,
-	Ext2Stop,
-	EXT2_DRIVER_VERSION
+	Ext4IsBindingSupported,
+	Ext4Bind,
+	Ext4Stop,
+	Ext4_DRIVER_VERSION
 };
 
 EFI_STATUS
 EFIAPI
-Ext2EntryPoint (
+Ext4EntryPoint (
   IN EFI_HANDLE         ImageHandle,
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
 {
+  Print(L"Hello World!\n");
 	EFI_STATUS st = EfiLibInstallAllDriverProtocols2(ImageHandle,
                                                    SystemTable,
-                                                   &gExt2BindingProtocol,
+                                                   &gExt4BindingProtocol,
                                                    ImageHandle,
-                                                   &gExt2ComponentName,
-                                                   &gExt2ComponentName2,
+                                                   &gExt4ComponentName,
+                                                   &gExt4ComponentName2,
                                                    NULL, NULL, NULL, NULL);
   
   if(EFI_ERROR(st))
@@ -137,7 +138,7 @@ Ext2EntryPoint (
 	return EFI_SUCCESS;
 }
 
-EFI_STATUS EFIAPI Ext2IsBindingSupported (
+EFI_STATUS EFIAPI Ext4IsBindingSupported (
   IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
   IN EFI_HANDLE ControllerHandle,
   IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL)
@@ -164,7 +165,7 @@ EFI_STATUS EFIAPI Ext2IsBindingSupported (
  return st;
 }
 
-EFI_STATUS EFIAPI Ext2Bind (
+EFI_STATUS EFIAPI Ext4Bind (
   IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
   IN EFI_HANDLE ControllerHandle,
   IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL)
@@ -201,7 +202,7 @@ EFI_STATUS EFIAPI Ext2Bind (
   if(EFI_ERROR(st))
     goto error;
 
-  st = Ext2OpenPartition(diskIo, diskIo2, blockIo);
+  st = Ext4OpenPartition(diskIo, diskIo2, blockIo);
 
   if(!EFI_ERROR(st))
     return st;
