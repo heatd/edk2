@@ -6,6 +6,7 @@
  */
 
 #include "Ext4.h"
+#include <Library/DebugLib.h>
 
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt4DriverNameTable[] = {
   {
@@ -124,7 +125,7 @@ Ext4EntryPoint (
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
 {
-  Print(L"Hello World!\n");
+  DEBUG((EFI_D_INFO, "Hello World!\n"));
 	EFI_STATUS st = EfiLibInstallAllDriverProtocols2(ImageHandle,
                                                    SystemTable,
                                                    &gExt4BindingProtocol,
@@ -174,6 +175,7 @@ EFI_STATUS EFIAPI Ext4Bind (
   EFI_DISK_IO2_PROTOCOL *diskIo2 = NULL;
   EFI_BLOCK_IO_PROTOCOL *blockIo;
 
+  DEBUG((EFI_D_INFO, "[Ext4] Binding to controller\n"));
 
   EFI_STATUS st = gBS->OpenProtocol(ControllerHandle,
                                     &gEfiDiskIoProtocolGuid,
@@ -183,6 +185,7 @@ EFI_STATUS EFIAPI Ext4Bind (
                                     EFI_OPEN_PROTOCOL_BY_DRIVER);
   if(EFI_ERROR(st))
     return st;
+  DEBUG((EFI_D_INFO, "[Ext4] Controller supports DISK_IO\n"));
 
   st = gBS->OpenProtocol(ControllerHandle,
                          &gEfiDiskIo2ProtocolGuid,
@@ -192,15 +195,22 @@ EFI_STATUS EFIAPI Ext4Bind (
                          EFI_OPEN_PROTOCOL_BY_DRIVER);
   // It's okay to not support DISK_IO2
 
+  if(diskIo2)
+  {
+      DEBUG((EFI_D_INFO, "[Ext4] Controller supports DISK_IO2\n"));
+  }
+
   st = gBS->OpenProtocol(ControllerHandle,
                          &gEfiBlockIoProtocolGuid,
                          (VOID **) &blockIo,
                          BindingProtocol->ImageHandle,
                          ControllerHandle,
-                         EFI_OPEN_PROTOCOL_BY_DRIVER);
+                         EFI_OPEN_PROTOCOL_GET_PROTOCOL);
 
   if(EFI_ERROR(st))
     goto error;
+
+  DEBUG((EFI_D_INFO, "Opening partition\n"));
 
   st = Ext4OpenPartition(diskIo, diskIo2, blockIo);
 
