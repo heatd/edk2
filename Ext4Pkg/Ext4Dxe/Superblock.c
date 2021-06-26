@@ -33,7 +33,8 @@ BOOLEAN Ext4SuperblockValidate(EXT4_SUPERBLOCK *sb)
 {
   if(sb->s_magic != EXT4_SIGNATURE)
     return FALSE;
-  
+
+  // TODO: We should try to support EXT2/3 partitions too
   if(sb->s_rev_level != EXT4_DYNAMIC_REV && sb->s_rev_level != EXT4_GOOD_OLD_REV)
     return FALSE;
 

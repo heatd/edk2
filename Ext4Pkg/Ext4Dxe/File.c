@@ -5,7 +5,9 @@
  * 
  */
 
+#include "AutoGen.h"
 #include "Ext4.h"
+#include "Guid/FileSystemInfo.h"
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -268,6 +270,47 @@ static EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, I
   return EFI_SUCCESS;
 }
 
+static EFI_STATUS Ext4GetFilesystemInfo(IN EXT4_PARTITION *Part, OUT EFI_FILE_SYSTEM_INFO *Info, IN OUT UINTN *BufferSize)
+{
+  // Length of s_volume_name + null terminator
+  CHAR16 VolumeName[16 + 1];
+  UINTN VolNameLength = 0;
+  
+  // s_volume_name is only valid on dynamic revision; old filesystems don't support this
+  if(Part->SuperBlock.s_rev_level == EXT4_DYNAMIC_REV)
+  {
+    EFI_STATUS st = AsciiStrnToUnicodeStrS((const CHAR8 *) Part->SuperBlock.s_volume_name,
+                                           16, VolumeName, sizeof(VolumeName), &VolNameLength);
+  
+    if(st != EFI_SUCCESS)
+      return st;
+  }
+
+  UINTN NeededLength = SIZE_OF_EFI_FILE_SYSTEM_INFO + VolNameLength + 1;
+
+  if(*BufferSize < NeededLength)
+  {
+    *BufferSize = NeededLength;
+    return EFI_BUFFER_TOO_SMALL;
+  }
+
+  EXT4_BLOCK_NR TotalBlocks = Part->NumberBlocks;
+
+  EXT4_BLOCK_NR FreeBlocks = Ext4MakeBlockNumberFromHalfs(Part, Part->SuperBlock.s_free_blocks_count,
+                                                          Part->SuperBlock.s_free_blocks_count_hi);
+
+  Info->BlockSize = Part->BlockSize;
+  Info->Size = NeededLength;
+  Info->ReadOnly = Part->ReadOnly;
+  Info->VolumeSize = TotalBlocks * Part->BlockSize;
+  Info->FreeSpace = FreeBlocks * Part->BlockSize;
+  StrCpyS(Info->VolumeLabel, VolNameLength + 1, VolumeName);
+
+  *BufferSize = NeededLength;
+
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 EFIAPI Ext4GetInfo(
   IN EFI_FILE_PROTOCOL        *This,
@@ -278,6 +321,9 @@ EFIAPI Ext4GetInfo(
 {
   if(CompareGuid(InformationType, &gEfiFileInfoGuid))
     return Ext4GetFileInfo((EXT4_FILE *) This, Buffer, BufferSize);
+  
+  if(CompareGuid(InformationType, &gEfiFileSystemInfoGuid))
+    return Ext4GetFilesystemInfo(((EXT4_FILE *) This)->Partition, Buffer, BufferSize);
   
   return EFI_UNSUPPORTED;
 }
