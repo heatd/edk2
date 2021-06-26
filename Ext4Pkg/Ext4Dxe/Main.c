@@ -115,7 +115,7 @@ EFI_DRIVER_BINDING_PROTOCOL gExt4BindingProtocol =
 	Ext4IsBindingSupported,
 	Ext4Bind,
 	Ext4Stop,
-	Ext4_DRIVER_VERSION
+	EXT4_DRIVER_VERSION
 };
 
 EFI_STATUS
@@ -212,10 +212,14 @@ EFI_STATUS EFIAPI Ext4Bind (
 
   DEBUG((EFI_D_INFO, "Opening partition\n"));
 
-  st = Ext4OpenPartition(diskIo, diskIo2, blockIo);
+  st = Ext4OpenPartition(ControllerHandle, diskIo, diskIo2, blockIo);
 
   if(!EFI_ERROR(st))
+  {
     return st;
+  }
+
+  DEBUG((EFI_D_INFO, "[ext4] Error mounting %x\n", st));
 
 error:
   if(diskIo)

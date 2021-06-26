@@ -35,8 +35,14 @@
   Partition.c
   DiskUtil.c
   Superblock.c
+  BlockGroup.c
+  Inode.c
+  Directory.c
+  Extents.c
+  File.c
 
 [Packages]
+  EmbeddedPkg/EmbeddedPkg.dec
   MdePkg/MdePkg.dec
 
 [LibraryClasses]

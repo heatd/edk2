@@ -8,6 +8,7 @@
 #ifndef _EXT4_DISK_H
 #define _EXT4_DISK_H
 
+#include "Base.h"
 #include <Uefi.h>
 
 #define EXT4_SUPERBLOCK_OFFSET		1024
@@ -30,22 +31,50 @@
 #define EXT4_GOOD_OLD_REV    0
 #define EXT4_DYNAMIC_REV     1
 
-#define EXT4_FEATURE_COMPAT_DIR_PREALLOC          1
-#define EXT4_FEATURE_COMPAT_IMAGIC_INODES         2
-#define EXT3_FEATURE_COMPAT_HAS_JOURNAL           4
-#define EXT4_FEATURE_COMPAT_EXT_ATTR              8
+#define EXT4_FEATURE_COMPAT_DIR_PREALLOC          0x01
+#define EXT4_FEATURE_COMPAT_IMAGIC_INODES         0x02
+#define EXT3_FEATURE_COMPAT_HAS_JOURNAL           0x04
+#define EXT4_FEATURE_COMPAT_EXT_ATTR              0x08
 #define EXT4_FEATURE_COMPAT_RESIZE_INO            0x10
 #define EXT4_FEATURE_COMPAT_DIR_INDEX             0x20
 
-#define EXT4_FEATURE_INCOMPAT_COMPRESSION         0x1
-#define EXT4_FEATURE_INCOMPAT_FILETYPE            0x2
-#define EXT4_FEATURE_INCOMPAT_RECOVER             0x4
-#define EXT4_FEATURE_INCOMPAT_JOURNAL_DEV         0x8
-#define EXT4_FEATURE_INCOMPAT_META_BG             0x10
+#define EXT4_FEATURE_INCOMPAT_COMPRESSION         0x00001
+#define EXT4_FEATURE_INCOMPAT_FILETYPE            0x00002
+#define EXT4_FEATURE_INCOMPAT_RECOVER             0x00004
+#define EXT4_FEATURE_INCOMPAT_JOURNAL_DEV         0x00008
+#define EXT4_FEATURE_INCOMPAT_META_BG             0x00010
+#define EXT4_FEATURE_INCOMPAT_EXTENTS             0x00040
+#define EXT4_FEATURE_INCOMPAT_64BIT               0x00080
+#define EXT4_FEATURE_INCOMPAT_MMP                 0x00100
+#define EXT4_FEATURE_INCOMPAT_FLEX_BG             0x00200
+#define EXT4_FEATURE_INCOMPAT_EA_INODE            0x00400
+// It's not clear whether or not this feature (below) is used right now
+#define EXT4_FEATURE_INCOMPAT_DIRDATA             0x01000
+#define EXT4_FEATURE_INCOMPAT_CSUM_SEED           0x02000
+#define EXT4_FEATURE_INCOMPAT_LARGEDIR            0x04000
+#define EXT4_FEATURE_INCOMPAT_INLINE_DATA         0x08000
+#define EXT4_FEATURE_INCOMPAT_ENCRYPT             0x10000
 
-#define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER       1
-#define EXT4_FEATURE_RO_COMPAT_LARGE_FILE         2
-#define EXT4_FEATURE_RO_COMPAT_BTREE_DIR          4
+#define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER       0x0001
+#define EXT4_FEATURE_RO_COMPAT_LARGE_FILE         0x0002
+#define EXT4_FEATURE_RO_COMPAT_BTREE_DIR          0x0004 // Unused
+#define EXT4_FEATURE_RO_COMPAT_HUGE_FILE          0x0008
+#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM           0x0010
+#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK          0x0020
+#define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE        0x0040
+#define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT       0x0080 // Not implemented in ext4
+#define EXT4_FEATURE_RO_COMPAT_QUOTA              0x0100
+#define EXT4_FEATURE_RO_COMPAT_BIGALLOC           0x0200
+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM      0x0400
+#define EXT4_FEATURE_RO_COMPAT_REPLICA            0x0800 // Not used
+#define EXT4_FEATURE_RO_COMPAT_READONLY           0x1000 // We explicitly don't recognise this, so we get read only.
+#define EXT4_FEATURE_RO_COMPAT_PROJECT            0x2000
+
+/* Important notes about the features
+ * Absolutely needed features:
+ *    1) Every incompat, because we might want to mount root filesystems
+ *    2) Relevant RO_COMPATs(I'm not sure of what to do wrt quota, project)
+ */
 
 #define EXT4_INO_TYPE_FIFO                       0x1000
 #define EXT4_INO_TYPE_CHARDEV                    0x2000
@@ -56,21 +85,28 @@
 #define EXT4_INO_TYPE_UNIX_SOCK                  0xC000
 
 /* Inode flags */
-#define EXT4_SECRM_FL                    0x1
-#define EXT4_UNRM_FL                     0x2
-#define EXT4_COMPR_FL                    0x4
-#define EXT4_SYNC_FL                     0x8
-#define EXT4_IMMUTABLE_FL                0x10
-#define EXT4_APPEND_FL                   0x20
-#define EXT4_NODUMP_FL                   0x40
-#define EXT4_NOATIME_FL                  0x80
-#define EXT4_DIRTY_FL                    0x100
-#define EXT4_COMPRBLK_FL                 0x200
-#define EXT4_NOCOMPR_FL                  0x400
-#define EXT4_ECOMPR_FL                   0x800
-#define EXT4_BTREE_FL                    0x1000
-#define EXT4_INDEX_FL                    0x2000
-#define EXT3_JOURNAL_DATA_FL             0x4000
+#define EXT4_SECRM_FL                    0x00000001
+#define EXT4_UNRM_FL                     0x00000002
+#define EXT4_COMPR_FL                    0x00000004
+#define EXT4_SYNC_FL                     0x00000008
+#define EXT4_IMMUTABLE_FL                0x00000010
+#define EXT4_APPEND_FL                   0x00000020
+#define EXT4_NODUMP_FL                   0x00000040
+#define EXT4_NOATIME_FL                  0x00000080
+#define EXT4_DIRTY_FL                    0x00000100
+#define EXT4_COMPRBLK_FL                 0x00000200
+#define EXT4_NOCOMPR_FL                  0x00000400
+#define EXT4_ECOMPR_FL                   0x00000800
+#define EXT4_BTREE_FL                    0x00001000
+#define EXT4_INDEX_FL                    0x00002000
+#define EXT4_JOURNAL_DATA_FL             0x00004000
+#define EXT4_NOTAIL_FL                   0x00008000
+#define EXT4_DIRSYNC_FL                  0x00010000
+#define EXT4_TOPDIR_FL                   0x00020000
+#define EXT4_HUGE_FILE_FL                0x00040000
+#define EXT4_EXTENTS_FL                  0x00080000
+#define EXT4_VERITY_FL                   0x00100000
+#define EXT4_EA_INODE_FL                 0x00200000
 #define EXT4_RESERVED_FL                 0x80000000
 
 /* File type flags that are stored in the directory entries */
@@ -133,19 +169,89 @@ typedef struct
 	UINT32 s_last_orphan;
 	UINT32 s_hash_seed[4];
 	UINT8 s_def_hash_version;
+	UINT8 s_jnl_backup_type;
+	UINT16 s_desc_size;
 	UINT32 s_default_mount_options;
 	UINT32 s_first_meta_bg;
+	UINT32 s_mkfs_time;
+	UINT32 s_jnl_blocks[17];
+	UINT32 s_blocks_count_hi;
+	UINT32 s_r_blocks_count_hi;
+	UINT32 s_free_blocks_count_hi;
+	UINT16 s_min_extra_isize;
+	UINT16 s_want_extra_isize;
+	UINT32 s_flags;
+	UINT16 s_raid_stride;
+	UINT16 s_mmp_interval;
+	UINT64 s_mmp_block;
+	UINT32 s_raid_stride_width;
+	UINT8 s_log_groups_per_flex;
+	UINT8 s_checksum_type; // Only valid value is 1 - CRC32C
+	UINT16 s_reserved_pad;
+	UINT64 s_kbytes_written;
+
+	// Snapshot stuff isn't used in Linux and isn't implemented here
+	UINT32 s_snapshot_inum;
+	UINT32 s_snapshot_id;
+	UINT64 s_snapshot_r_blocks_count;
+	UINT32 s_snapshot_list;
+	UINT32 s_error_count;
+	UINT32 s_first_error_time;
+	UINT32 s_first_error_ino;
+	UINT64 s_first_error_block;
+	UINT8 s_first_error_func[32];
+	UINT32 s_first_error_line;
+	UINT32 s_last_error_time;
+	UINT32 s_last_error_ino;
+	UINT32 s_last_error_line;
+	UINT64 s_last_error_block;
+	UINT8 s_last_error_func[32];
+	UINT8 s_mount_opts[64];
+	UINT32 s_usr_quota_inum;
+	UINT32 s_grp_quota_inum;
+	UINT32 s_overhead_blocks;
+	UINT32 s_backup_bgs[2]; // sparse_super2
+	UINT8 s_encrypt_algos[4];
+	UINT8 s_encrypt_pw_salt[16];
+	UINT32 s_lpf_ino;
+	UINT32 s_prj_quota_inum;
+	UINT32 s_checksum_seed;
+	UINT32 s_reserved[98];
+	UINT32 s_checksum;
 } EXT4_SUPERBLOCK;
+
+STATIC_ASSERT(sizeof(EXT4_SUPERBLOCK) == 1024, "ext4 superblock struct has incorrect size");
 
 typedef struct
 {
-	UINT32 block_usage_addr;
-	UINT32 inode_usage_addr;
-	UINT32 inode_table_addr;
-	UINT16 unallocated_blocks_in_group;
-	UINT16 unallocated_inodes_in_group;
-	UINT16 used_dirs_count;
-} BlockGroupDesc;
+	UINT32 bg_block_bitmap_lo;
+	UINT32 bg_inode_bitmap_lo;
+	UINT32 bg_inode_table_lo;
+	UINT16 bg_free_blocks_count_lo;
+	UINT16 bg_free_inodes_count_lo;
+	UINT16 bg_used_dirs_count_lo;
+	UINT16 bg_flags;
+	UINT32 bg_exclude_bitmap_lo;
+	UINT16 bg_block_bitmap_csum_lo;
+	UINT16 bg_inode_bitmap_csum_lo;
+	UINT16 bg_itable_unused_lo;
+	UINT16 bg_checksum;
+	UINT32 bg_block_bitmap_hi;
+	UINT32 bg_inode_bitmap_hi;
+	UINT32 bg_inode_table_hi;
+	UINT16 bg_free_blocks_count_hi;
+	UINT16 bg_free_inodes_count_hi;
+	UINT16 bg_used_dirs_count_hi;
+	UINT16 bg_itable_unused_hi;
+	UINT32 bg_exclude_bitmap_hi;
+	UINT16 bg_block_bitmap_csum_hi;
+	UINT16 bg_inode_bitmap_csum_hi;
+	UINT32 bg_reserved;
+} EXT4_BLOCK_GROUP_DESC;
+
+#define EXT4_OLD_BLOCK_DESC_SIZE        32
+
+STATIC_ASSERT(sizeof(EXT4_BLOCK_GROUP_DESC) == 64, "ext4 block group descriptor struct has incorrect size");
 
 #define EXT4_DBLOCKS       12
 #define EXT4_IND_BLOCK     12
@@ -174,7 +280,38 @@ typedef struct _Ext4Inode
 	UINT32 i_file_acl;
 	UINT32 i_size_hi;
 	UINT32 i_faddr;
-	UINT32 i_os_spec_val[3];
+	union
+	{
+		// Note: Toolchain-specific defines (such as "linux") stops us from using simpler names down here. 
+		struct _Ext4_I_OSD2_Linux
+		{
+			UINT16 l_i_blocks_high;
+			UINT16 l_i_file_acl_high;
+			UINT16 l_i_uid_high;
+			UINT16 l_i_gid_high;
+			UINT16 l_i_checksum_lo;
+			UINT16 l_i_reserved;
+		} data_linux;
+
+		struct _Ext4_I_OSD2_Hurd
+		{
+			UINT16 h_i_reserved1;
+			UINT16 h_i_mode_high;
+			UINT16 h_i_uid_high;
+			UINT16 h_i_gid_high;
+			UINT32 h_i_author;
+		} data_hurd;
+	} i_osd2;
+
+	UINT16 i_extra_isize;
+	UINT16 i_checksum_hi;
+	UINT32 i_ctime_extra;
+	UINT32 i_mtime_extra;
+	UINT32 i_atime_extra;
+	UINT32 i_crtime;
+	UINT32 i_crtime_extra;
+	UINT32 i_version_hi;
+	UINT32 i_projid;
 } EXT4_INODE;
 
 typedef struct
@@ -184,10 +321,64 @@ typedef struct
 	UINT8 lsbit_namelen;
 	UINT8 type_indic;
 	char name[255];
-} DIR_ENTRY;
+} EXT4_DIR_ENTRY;
 
-#define EXT4_SUPPORTED_COMPAT    0
-#define EXT4_SUPPORTED_RO_COMPAT 0
-#define EXT4_SUPPORTED_INCOMPAT  0
+
+// This on-disk structure is present at the bottom of the extent tree
+typedef struct
+{
+	// First logical block
+	UINT32 ee_block;
+	// Length of the extent, in blocks
+	UINT16 ee_len;
+	// The physical (filesystem-relative) block is split between the high 16 bits
+	// and the low 32 bits - this forms a 48-bit block number
+	UINT16 ee_start_hi;
+	UINT32 ee_start_lo; 
+} EXT4_EXTENT;
+
+// This on-disk structure is present at all levels except the bottom
+typedef struct
+{
+	// This index covers logical blocks from 'ei_block'
+	// TODO: Until where? Find out.
+	UINT32 ei_block;
+	// Block of the next level of the extent tree, similarly split in a high and low portion.
+	UINT32 ei_leaf_lo;
+	UINT16 ei_leaf_hi;
+
+	UINT16 ei_unused;
+} EXT4_EXTENT_INDEX;
+
+typedef struct
+{
+	// Needs to be EXT4_EXTENT_HEADER_MAGIC
+	UINT16 eh_magic;
+	// Number of entries
+	UINT16 eh_entries;
+	// Maximum number of entries that could follow this header
+	UINT16 eh_max;
+	// Depth of this node in the tree - the tree can be at most 5 levels deep
+	UINT16 eh_depth;
+	// Unused by standard ext4
+	UINT32 eh_generation;
+} EXT4_EXTENT_HEADER;
+
+#define EXT4_EXTENT_HEADER_MAGIC   0xF30A
+
+// Specified by ext4 docs and backed by a bunch of math
+#define EXT4_EXTENT_TREE_MAX_DEPTH  5
+
+
+typedef struct
+{
+	// CRC32C of UUID + inode number + igeneration + extent block
+	UINT32 eb_checksum;
+} EXT4_EXTENT_TAIL;
+
+typedef UINT64 EXT4_BLOCK_NR;
+typedef UINT64 EXT4_INO_NR;
+
+#define EXT4_INODE_SIZE(ino) (((UINT64) ino->i_size_hi << 32) | ino->i_size_lo)
 
 #endif

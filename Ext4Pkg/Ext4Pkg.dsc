@@ -1,7 +1,7 @@
 ## @file
-#  Ext2 Package
+#  Ext4 Package
 #
-#  Ext2 Driver
+#  Ext4 Driver
 #  Copyright (c) 2021 Pedro Falcato
 #
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -10,12 +10,12 @@
 
 
 [Defines]
-  PLATFORM_NAME                  = Ext2
+  PLATFORM_NAME                  = Ext4
   PLATFORM_GUID                  = 6B4BF998-668B-46D3-BCFA-971F99F8708C
   PLATFORM_VERSION               = 0.1
   DSC_SPECIFICATION              = 0x00010005
   SUPPORTED_ARCHITECTURES        = IA32|X64|EBC|ARM|AARCH64|RISCV64
-  OUTPUT_DIRECTORY               = Build/Ext2
+  OUTPUT_DIRECTORY               = Build/Ext4
   BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -35,6 +35,7 @@
   # Common Libraries
   #
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
+  TimeBaseLib|EmbeddedPkg/Library/TimeBaseLib/TimeBaseLib.inf
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   UefiLib|MdePkg/Library/UefiLib/UefiLib.inf
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
