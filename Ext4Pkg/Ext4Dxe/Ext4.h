@@ -225,4 +225,32 @@ void Ext4FileATime(IN EXT4_FILE *File, OUT EFI_TIME *Time);
 void Ext4FileMTime(IN EXT4_FILE *File, OUT EFI_TIME *Time);
 void Ext4FileCreateTime(IN EXT4_FILE *File, OUT EFI_TIME *Time);
 
+
+/**
+   Initialises Unicode collation, which is needed for case-insensitive string comparisons
+   within the driver (a good example of an application of this is filename comparison).
+ 
+   @param[in]      DriverHandle    Handle to the driver image.
+ 
+   @retval EFI_SUCCESS   Unicode collation was successfully initialised.
+   @retval !EFI_SUCCESS  Failure.
+*/
+EFI_STATUS Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle);
+
+/**
+   Does a case-insensitive string comparison. Refer to EFI_UNICODE_COLLATION_PROTOCOL's StriColl
+   for more details.
+ 
+   @param[in]      Str1   Pointer to a null terminated string.
+   @param[in]      Str2   Pointer to a null terminated string.
+ 
+   @retval 0   Str1 is equivalent to Str2.
+   @retval >0  Str1 is lexically greater than Str2.
+   @retval <0  Str1 is lexically less than Str2.
+*/
+INTN Ext4StrCmpInsensitive(
+  IN CHAR16                                 *Str1,
+  IN CHAR16                                 *Str2
+  );
+
 #endif

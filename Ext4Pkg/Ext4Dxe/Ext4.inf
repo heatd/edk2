@@ -40,6 +40,7 @@
   Directory.c
   Extents.c
   File.c
+  Collation.c
 
 [Packages]
   EmbeddedPkg/EmbeddedPkg.dec

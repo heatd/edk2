@@ -38,6 +38,9 @@ BOOLEAN Ext4SuperblockValidate(EXT4_SUPERBLOCK *sb)
   if(sb->s_rev_level != EXT4_DYNAMIC_REV && sb->s_rev_level != EXT4_GOOD_OLD_REV)
     return FALSE;
 
+  if((sb->s_state & EXT4_FS_STATE_UNMOUNTED) == 0)
+    return FALSE;
+
   return TRUE;
 }
 
@@ -54,7 +57,7 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   EXT4_SUPERBLOCK *sb = &Partition->SuperBlock;
 
   if(!Ext4SuperblockValidate(sb))
-    return EFI_UNSUPPORTED;
+    return EFI_VOLUME_CORRUPTED;
   
   if(sb->s_rev_level == EXT4_DYNAMIC_REV)
   {
@@ -105,6 +108,12 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   else
   {
     Partition->DescSize = EXT4_OLD_BLOCK_DESC_SIZE;
+  }
+
+  if(Partition->DescSize < EXT4_64BIT_BLOCK_DESC_SIZE && Ext4Is64Bit(Partition))
+  {
+    // 64 bit filesystems need DescSize to be 64 bytes
+    return EFI_VOLUME_CORRUPTED;
   }
 
   EXT4_BLOCK_NR NrBlocks = Partition->NumberBlockGroups * Partition->DescSize;

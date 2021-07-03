@@ -15,8 +15,10 @@
 
 #define EXT4_SIGNATURE		0xEF53
 
-#define EXT4_VALID_FS        1
-#define EXT4_ERROR_FS        2
+#define EXT4_FS_STATE_UNMOUNTED              0x1
+#define EXT4_FS_STATE_ERRORS_DETECTED        0x2
+#define EXT4_FS_STATE_RECOVERING_ORPHANS     0x4
+
 
 #define EXT4_ERRORS_CONTINUE 1
 #define EXT4_ERRORS_RO       2
@@ -250,8 +252,10 @@ typedef struct
 } EXT4_BLOCK_GROUP_DESC;
 
 #define EXT4_OLD_BLOCK_DESC_SIZE        32
+#define EXT4_64BIT_BLOCK_DESC_SIZE      64
 
-STATIC_ASSERT(sizeof(EXT4_BLOCK_GROUP_DESC) == 64, "ext4 block group descriptor struct has incorrect size");
+STATIC_ASSERT(sizeof(EXT4_BLOCK_GROUP_DESC) == EXT4_64BIT_BLOCK_DESC_SIZE,
+              "ext4 block group descriptor struct has incorrect size");
 
 #define EXT4_DBLOCKS       12
 #define EXT4_IND_BLOCK     12

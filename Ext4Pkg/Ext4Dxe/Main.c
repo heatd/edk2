@@ -125,7 +125,6 @@ Ext4EntryPoint (
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
 {
-  DEBUG((EFI_D_INFO, "Hello World!\n"));
 	EFI_STATUS st = EfiLibInstallAllDriverProtocols2(ImageHandle,
                                                    SystemTable,
                                                    &gExt4BindingProtocol,
@@ -135,8 +134,9 @@ Ext4EntryPoint (
                                                    NULL, NULL, NULL, NULL);
   
   if(EFI_ERROR(st))
-    ASSERT_EFI_ERROR(st);
-	return EFI_SUCCESS;
+    return st;
+  
+  return Ext4InitialiseUnicodeCollation(ImageHandle);
 }
 
 EFI_STATUS EFIAPI Ext4IsBindingSupported (
