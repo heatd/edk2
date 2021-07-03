@@ -51,15 +51,15 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
                                  sizeof(EXT4_SUPERBLOCK),
                                  EXT4_SUPERBLOCK_OFFSET);
   
-  if(EFI_ERROR(st))
+  if (EFI_ERROR(st))
     return st;
   
   EXT4_SUPERBLOCK *sb = &Partition->SuperBlock;
 
-  if(!Ext4SuperblockValidate(sb))
+  if (!Ext4SuperblockValidate(sb))
     return EFI_VOLUME_CORRUPTED;
   
-  if(sb->s_rev_level == EXT4_DYNAMIC_REV)
+  if (sb->s_rev_level == EXT4_DYNAMIC_REV)
   {
     Partition->FeaturesCompat = sb->s_feature_compat;
     Partition->FeaturesIncompat = sb->s_feature_incompat;
@@ -77,14 +77,14 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   // It's essential to check for this to avoid filesystem corruption and to avoid
   // accidentally opening an ext2/3/4 filesystem we don't understand, which would be disasterous.
 
-  if(Partition->FeaturesIncompat & ~supported_incompat_feat)
+  if (Partition->FeaturesIncompat & ~supported_incompat_feat)
   {
     DEBUG((EFI_D_INFO, "[Ext4] Unsupported %lx\n", Partition->FeaturesIncompat & ~supported_incompat_feat));
     return EFI_UNSUPPORTED;
   }
   
   UINT32 unsupported_ro_compat = Partition->FeaturesRoCompat & ~supported_ro_compat_feat; 
-  if(unsupported_ro_compat != 0)
+  if (unsupported_ro_compat != 0)
   {
     DEBUG((EFI_D_INFO, "[Ext4] Unsupported ro compat %lx\n", unsupported_ro_compat));
     Partition->ReadOnly = TRUE;
@@ -101,7 +101,7 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   DEBUG((EFI_D_INFO, "[ext4] Number of blocks = %lu\n[ext4] Number of block groups: %lu\n",
          Partition->NumberBlocks, Partition->NumberBlockGroups));
   
-  if(Ext4Is64Bit(Partition))
+  if (Ext4Is64Bit(Partition))
   {
     Partition->DescSize = sb->s_desc_size;
   }
@@ -110,7 +110,7 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
     Partition->DescSize = EXT4_OLD_BLOCK_DESC_SIZE;
   }
 
-  if(Partition->DescSize < EXT4_64BIT_BLOCK_DESC_SIZE && Ext4Is64Bit(Partition))
+  if (Partition->DescSize < EXT4_64BIT_BLOCK_DESC_SIZE && Ext4Is64Bit(Partition))
   {
     // 64 bit filesystems need DescSize to be 64 bytes
     return EFI_VOLUME_CORRUPTED;
@@ -119,7 +119,7 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   EXT4_BLOCK_NR NrBlocks = Partition->NumberBlockGroups * Partition->DescSize;
   Partition->BlockGroups = Ext4AllocAndReadBlocks(Partition, NrBlocks, Partition->BlockSize == 1024 ? 2 : 1);
 
-  if(!Partition->BlockGroups)
+  if (!Partition->BlockGroups)
     return EFI_OUT_OF_RESOURCES;
   
   // Note that the cast below is completely safe, because EXT4_FILE is a specialisation of EFI_FILE_PROTOCOL

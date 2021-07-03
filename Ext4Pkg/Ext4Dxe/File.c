@@ -6,11 +6,15 @@
  */
 
 #include "Ext4.h"
+#include "Guid/FileInfo.h"
+#include "Library/MemoryAllocationLib.h"
 #include <Guid/FileSystemInfo.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/SimpleFileSystem.h>
+
+static EXT4_FILE *Ext4DuplicateFile(IN CONST EXT4_FILE *Original);
 
 static EFI_STATUS GetPathSegment(IN const CHAR16 *Path, OUT CHAR16 *PathSegment, OUT UINTN *Length)
 {
@@ -129,6 +133,15 @@ EFI_STATUS EFIAPI Ext4Open(
     Current = File;
   }
 
+  if (Level == 0)
+  {
+    // We opened the base directory again, so we need to duplicate the file structure
+    Current = Ext4DuplicateFile(Current);
+    if (!Current) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+  }
+
   if(!Ext4ApplyPermissions(Current, OpenMode))
   {
     Ext4CloseInternal(Current);
@@ -138,6 +151,7 @@ EFI_STATUS EFIAPI Ext4Open(
   *NewHandle = &Current->Protocol;
 
   DEBUG((EFI_D_INFO, "Open successful\n"));
+  DEBUG((EFI_D_INFO, "Opened filename %s\n", Current->FileName));
   return EFI_SUCCESS;
 }
 
@@ -156,6 +170,7 @@ EFI_STATUS Ext4CloseInternal(
     return EFI_SUCCESS;
 
   DEBUG((EFI_D_INFO, "[ext4] Closed file %p (inode %lu)\n", File, File->InodeNum));
+  FreePool(File->FileName);
   FreePool(File->Inode);
   FreePool(File);
   return EFI_SUCCESS;
@@ -258,10 +273,15 @@ EFIAPI Ext4SetPosition(
 
 static EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT UINTN *BufferSize)
 {
-  // TODO: Get a way to get and set the directory entry
-  if(*BufferSize < sizeof(EFI_FILE_INFO))
+  // TODO: Get a way to set the directory entry for SetFileInfo
+  UINTN FileNameLen = StrLen(File->FileName);
+  UINTN FileNameSize = StrSize(File->FileName);
+
+  UINTN NeededLength = SIZE_OF_EFI_FILE_INFO + FileNameSize;
+ 
+  if(*BufferSize < NeededLength)
   {
-    *BufferSize = sizeof(EFI_FILE_INFO);
+    *BufferSize = NeededLength;
     return EFI_BUFFER_TOO_SMALL;
   }
 
@@ -271,7 +291,9 @@ static EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, I
   Ext4FileMTime(File, &Info->ModificationTime);
   Ext4FileCreateTime(File, &Info->LastAccessTime);
 
-  return EFI_SUCCESS;
+  *BufferSize = NeededLength;
+
+  return StrCpyS(Info->FileName, FileNameLen + 1, File->FileName);
 }
 
 static EFI_STATUS Ext4GetFilesystemInfo(IN EXT4_PARTITION *Part, OUT EFI_FILE_SYSTEM_INFO *Info, IN OUT UINTN *BufferSize)
@@ -290,7 +312,7 @@ static EFI_STATUS Ext4GetFilesystemInfo(IN EXT4_PARTITION *Part, OUT EFI_FILE_SY
       return st;
   }
 
-  UINTN NeededLength = SIZE_OF_EFI_FILE_SYSTEM_INFO + VolNameLength + 1;
+  UINTN NeededLength = SIZE_OF_EFI_FILE_SYSTEM_INFO + StrSize(VolumeName);
 
   if(*BufferSize < NeededLength)
   {
@@ -323,11 +345,46 @@ EFIAPI Ext4GetInfo(
   OUT VOID                    *Buffer
   )
 {
-  if(CompareGuid(InformationType, &gEfiFileInfoGuid))
+  if (CompareGuid(InformationType, &gEfiFileInfoGuid)) {
     return Ext4GetFileInfo((EXT4_FILE *) This, Buffer, BufferSize);
-  
-  if(CompareGuid(InformationType, &gEfiFileSystemInfoGuid))
+  }
+
+  if (CompareGuid(InformationType, &gEfiFileSystemInfoGuid)) {
     return Ext4GetFilesystemInfo(((EXT4_FILE *) This)->Partition, Buffer, BufferSize);
-  
+  }
+
   return EFI_UNSUPPORTED;
+}
+
+static EXT4_FILE *Ext4DuplicateFile(IN CONST EXT4_FILE *Original)
+{
+  EXT4_PARTITION *Partition = Original->Partition;
+  EXT4_FILE *File = AllocateZeroPool(sizeof(EXT4_FILE));
+  if (!File) {
+    return NULL;
+  }
+
+  File->Inode = AllocateZeroPool(Partition->InodeSize);
+  if (!File->Inode) {
+    FreePool(File);
+    return NULL;
+  }
+
+  CopyMem(File->Inode, Original->Inode, Partition->InodeSize);
+
+  File->FileName = AllocateZeroPool(StrSize(Original->FileName));
+  if (!File->FileName) {
+    FreePool(File->Inode);
+    FreePool(File);
+    return NULL;
+  }
+
+  StrCpyS(File->FileName, StrLen(Original->FileName) + 1, Original->FileName);
+
+  File->Position = 0;
+  Ext4SetupFile(File, Partition);
+  File->InodeNum = Original->InodeNum;
+  File->OpenMode = 0; // Will be filled by other code
+  
+  return File;
 }

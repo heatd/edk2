@@ -85,11 +85,11 @@ static inline UINT32 Ext4MediaId(EXT4_PARTITION *Partition)
   return Partition->blockIo->Media->MediaId;
 }
 
-EFI_STATUS Ext4ReadDiskIo(EXT4_PARTITION *Partition, void *Buffer, UINTN Length, UINT64 Offset);
+EFI_STATUS Ext4ReadDiskIo(EXT4_PARTITION *Partition, VOID *Buffer, UINTN Length, UINT64 Offset);
 
-EFI_STATUS Ext4ReadBlocks(EXT4_PARTITION *Partition, void *Buffer, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber);
+EFI_STATUS Ext4ReadBlocks(EXT4_PARTITION *Partition, VOID *Buffer, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber);
 
-void *Ext4AllocAndReadBlocks(EXT4_PARTITION *Partition, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber);
+VOID *Ext4AllocAndReadBlocks(EXT4_PARTITION *Partition, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber);
 
 static inline BOOLEAN Ext4Is64Bit(const EXT4_PARTITION *Partition)
 {
@@ -104,7 +104,7 @@ static inline EXT4_BLOCK_NR Ext4MakeBlockNumberFromHalfs(const EXT4_PARTITION *P
 
 static inline EXT4_BLOCK_GROUP_DESC *Ext4GetBlockGroupDesc(EXT4_PARTITION *Partition, UINT32 BlockGroup)
 {
-  return (EXT4_BLOCK_GROUP_DESC *) ((char *) Partition->BlockGroups + BlockGroup * Partition->DescSize);
+  return (EXT4_BLOCK_GROUP_DESC *) ((CHAR8 *) Partition->BlockGroups + BlockGroup * Partition->DescSize);
 }
 
 EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_INODE **OutIno);
@@ -114,7 +114,7 @@ static inline UINT64 Ext4BlockToByteOffset(const EXT4_PARTITION *Partition, EXT4
   return Partition->BlockSize * Block;
 }
 
-EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, void *Buffer, UINT64 Offset, IN OUT UINT64 *Length);
+EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *Length);
 
 static inline UINT64 Ext4InodeSize(EXT4_INODE *Inode)
 {
@@ -133,6 +133,7 @@ struct _Ext4File
   UINT64 Position;
 
   EXT4_PARTITION *Partition;
+  CHAR16 *FileName;
 };
 
 EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
@@ -252,5 +253,16 @@ INTN Ext4StrCmpInsensitive(
   IN CHAR16                                 *Str1,
   IN CHAR16                                 *Str2
   );
+
+/**
+   Retrieves the filename of the directory entry and converts it to UTF-16/UCS-2
+
+   @param[in]      Entry   Pointer to a EXT4_DIR_ENTRY.
+   @param[in]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
+ 
+   @retval EFI_SUCCESS   Unicode collation was successfully initialised.
+   @retval !EFI_SUCCESS  Failure.
+*/
+EFI_STATUS Ext4GetUcs2DirentName(EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]);
 
 #endif

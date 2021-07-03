@@ -6,7 +6,29 @@
 
 #include "Ext4.h"
 #include "Library/BaseLib.h"
+#include "Library/MemoryAllocationLib.h"
 #include "Uefi/UefiBaseType.h"
+
+/**
+   Retrieves the filename of the directory entry and converts it to UTF-16/UCS-2
+
+   @param[in]      Entry   Pointer to a EXT4_DIR_ENTRY.
+   @param[in]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
+ 
+   @retval EFI_SUCCESS   Unicode collation was successfully initialised.
+   @retval !EFI_SUCCESS  Failure.
+*/
+EFI_STATUS Ext4GetUcs2DirentName(EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1])
+{
+    CHAR8 Utf8NameBuf[EXT4_NAME_MAX + 1];
+    CopyMem(Utf8NameBuf, Entry->name, Entry->lsbit_namelen);
+
+    Utf8NameBuf[Entry->lsbit_namelen] = '\0';
+
+    // TODO: Use RedfishPkg's UTF-8 translation routines.
+    // This only handles ASCII which is incorrect
+    return AsciiStrToUnicodeStrS(Utf8NameBuf, Ucs2FileName, EXT4_NAME_MAX + 1);
+}
 
 EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITION *Partition,
 			EXT4_DIR_ENTRY *res)
@@ -58,18 +80,20 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
             if(entry->lsbit_namelen > EXT4_NAME_MAX)
                 continue;
 
-            CHAR8 Utf8NameBuf[EXT4_NAME_MAX + 1];
-            CopyMem(Utf8NameBuf, entry->name, entry->lsbit_namelen);
-
-            Utf8NameBuf[entry->lsbit_namelen] = '\0';
             CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1];
 
-            st = AsciiStrToUnicodeStrS(Utf8NameBuf, Ucs2FileName, EXT4_NAME_MAX + 1);
+            st = Ext4GetUcs2DirentName(entry, Ucs2FileName);
 
-            // This should never fail.
+            /* In theory, this should never fail.
+             * In reality, it's quite possible that it can fail, considering filenames in 
+             * Linux (and probably other nixes) are just null-terminated bags of bytes, and don't
+             * need to form valid ASCII/UTF-8 sequences.
+             */
             if (EFI_ERROR(st)) {
-                FreePages(buf, 1);
-                return st;
+                // If we error out, skip this entry
+                // I'm not sure if this is correct behaviour, but I don't think there's a precedent here.
+                b += entry->size;
+                continue;
             }
 
 			if (entry->lsbit_namelen == StrLen(Name) && 
@@ -97,15 +121,35 @@ EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION
     EXT4_DIR_ENTRY Entry;
     EFI_STATUS st = Ext4RetrieveDirent(Directory, Name, Partition, &Entry);
 
-    if(EFI_ERROR(st))
+    if (EFI_ERROR(st))
         return st;
-    
+        
     EXT4_FILE *File = AllocateZeroPool(sizeof(EXT4_FILE));
-    if(!File)
+    if (!File)
     {
-        FreePool(File);
-        return EFI_OUT_OF_RESOURCES;
+        st = EFI_OUT_OF_RESOURCES;
+        goto Error;
     }
+
+    CHAR16 FileName[EXT4_NAME_MAX + 1];
+
+    st = Ext4GetUcs2DirentName(&Entry, FileName);
+
+    if (EFI_ERROR(st))
+    {
+        goto Error;
+    }
+
+    File->FileName = AllocateZeroPool(StrSize(FileName));
+
+    if (!File->FileName)
+    {
+        st = EFI_OUT_OF_RESOURCES;
+        goto Error;
+    }
+
+    // This should not fail.
+    StrCpyS(File->FileName, EXT4_NAME_MAX + 1, FileName);
 
     File->InodeNum = Entry.inode;
 
@@ -113,15 +157,26 @@ EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION
 
     st = Ext4ReadInode(Partition, Entry.inode, &File->Inode);
 
-    if(EFI_ERROR(st))
+    if (EFI_ERROR(st))
     {
-        FreePool(File);
-        return st;
+        goto Error;
     }
 
     *OutFile = File;
 
     return EFI_SUCCESS;
+
+Error:
+    if(File)
+    {
+        if(File->FileName) {
+            FreePool(File->FileName);
+        }
+
+        FreePool(File);
+    }
+
+    return st;
 }
 
 EFI_STATUS EFIAPI Ext4OpenVolume(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI_FILE_PROTOCOL **Root)
@@ -141,6 +196,10 @@ EFI_STATUS EFIAPI Ext4OpenVolume(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI
         FreePool(RootInode);
         return EFI_OUT_OF_RESOURCES;
     }
+
+    // The filename will be "/"(null terminated of course)
+    RootDir->FileName = AllocateZeroPool(2);
+
 
     RootDir->Inode = RootInode;
     RootDir->InodeNum = 2;
