@@ -211,8 +211,18 @@ EFIAPI Ext4ReadFile(
   }
   else if(Ext4FileIsDir(File))
   {
-    // TODO: Implement Ext4ReadDir
-    return EFI_UNSUPPORTED;
+    DEBUG((EFI_D_WARN, "[ext4] ReadDir not implemented\n"));
+    UINT64 Length = *BufferSize;
+    EFI_STATUS st = Ext4ReadDir(Partition, File, Buffer, File->Position, &Length);
+    DEBUG((EFI_D_INFO, "[ext4] ReadDir status %lx\n", st));
+
+    if(st == EFI_SUCCESS)
+    {
+      DEBUG((EFI_D_INFO, "[ext4] ReadDir retlen %lu\n", Length));
+      *BufferSize = (UINTN) Length;
+    }
+
+    return st;
   }
 
   return EFI_SUCCESS;
@@ -271,7 +281,16 @@ EFIAPI Ext4SetPosition(
   return EFI_SUCCESS;
 }
 
-static EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT UINTN *BufferSize)
+/**
+   Retrieves information about the file and stores it in the EFI_FILE_INFO format.
+
+   @param[in]      File           Pointer to an opened file.
+   @param[out]     Info           Pointer to a EFI_FILE_INFO.
+   @param[in out]  BufferSize     Pointer to the buffer size
+ 
+   @retval EFI_STATUS         Status of the file information request.
+*/
+EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT UINTN *BufferSize)
 {
   // TODO: Get a way to set the directory entry for SetFileInfo
   UINTN FileNameLen = StrLen(File->FileName);
@@ -290,6 +309,13 @@ static EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, I
   Ext4FileATime(File, &Info->LastAccessTime);
   Ext4FileMTime(File, &Info->ModificationTime);
   Ext4FileCreateTime(File, &Info->LastAccessTime);
+  Info->Attribute = 0;
+  Info->Size = NeededLength;
+
+  if(Ext4FileIsDir(File))
+  {
+    Info->Attribute |= EFI_FILE_DIRECTORY;
+  }
 
   *BufferSize = NeededLength;
 

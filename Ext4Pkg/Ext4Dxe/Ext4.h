@@ -136,11 +136,45 @@ struct _Ext4File
   CHAR16 *FileName;
 };
 
-EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
-			OUT EXT4_DIR_ENTRY *res);
+/**
+   Retrieves a directory entry.
 
+   @param[in]      Directory   Pointer to the opened directory.
+   @param[in]      NameUnicode Pointer to the UCS-2 formatted filename.
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[out]     Result      Pointer to the destination directory entry.
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *Directory, const CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
+			OUT EXT4_DIR_ENTRY *Result);
+
+/**
+   Opens a file.
+
+   @param[in]      Directory   Pointer to the opened directory.
+   @param[in]      Name        Pointer to the UCS-2 formatted filename.
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      OpenMode    Mode in which the file is supposed to be open.
+   @param[out]     OutFile     Pointer to the newly opened file.
+
+   @retval EFI_STATUS          Result of the operation
+*/
 EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
                         OUT EXT4_FILE **OutFile);
+
+/**
+   Opens a file using a directory entry.
+ 
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      OpenMode    Mode in which the file is supposed to be open.
+   @param[out]     OutFile     Pointer to the newly opened file.
+   @param[in]      Entry       Directory entry to be used.
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4OpenDirent(EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_FILE **OutFile,
+                          EXT4_DIR_ENTRY *Entry);
 
 EXT4_INODE *Ext4AllocateInode(EXT4_PARTITION *Partition);
 
@@ -264,5 +298,31 @@ INTN Ext4StrCmpInsensitive(
    @retval !EFI_SUCCESS  Failure.
 */
 EFI_STATUS Ext4GetUcs2DirentName(EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]);
+
+/**
+   Retrieves information about the file and stores it in the EFI_FILE_INFO format.
+
+   @param[in]      File           Pointer to an opened file.
+   @param[out]     Info           Pointer to a EFI_FILE_INFO.
+   @param[in out]  BufferSize     Pointer to the buffer size
+ 
+   @retval EFI_STATUS         Status of the file information request.
+*/
+EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT UINTN *BufferSize);
+
+/**
+   Reads a directory entry.
+ 
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      File        Pointer to the open directory.
+   @param[out]     Buffer      Pointer to the output buffer.
+   @param[in]      Offset      Initial directory position.
+   @param[in out] OutLength    Pointer to a UINT64 that contains the length of the buffer,
+                               and the length of the actual EFI_FILE_INFO after the call. 
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4ReadDir(IN EXT4_PARTITION *Partition, IN EXT4_FILE *File,
+                       OUT VOID *Buffer, IN UINT64 Offset, IN OUT UINT64 *OutLength);
 
 #endif

@@ -20,6 +20,11 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, void *Buffer, 
     UINT64 RemainingRead = *Length;
     UINT64 BeenRead = 0;
 
+    if (RemainingRead > InodeSize - Offset)
+    {
+        RemainingRead = InodeSize - Offset;
+    }
+
     while(RemainingRead != 0)
     {
         UINT64 WasRead = 0;

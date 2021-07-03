@@ -327,6 +327,7 @@ typedef struct
 	char name[255];
 } EXT4_DIR_ENTRY;
 
+#define EXT4_MIN_DIR_ENTRY_LEN      8
 
 // This on-disk structure is present at the bottom of the extent tree
 typedef struct

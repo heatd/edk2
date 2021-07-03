@@ -30,6 +30,16 @@ EFI_STATUS Ext4GetUcs2DirentName(EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4
     return AsciiStrToUnicodeStrS(Utf8NameBuf, Ucs2FileName, EXT4_NAME_MAX + 1);
 }
 
+/**
+   Retrieves a directory entry.
+
+   @param[in]      Directory   Pointer to the opened directory.
+   @param[in]      NameUnicode Pointer to the UCS-2 formatted filename.
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[out]     Result      Pointer to the destination directory entry.
+
+   @retval EFI_STATUS          Result of the operation
+*/
 EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITION *Partition,
 			EXT4_DIR_ENTRY *res)
 {
@@ -42,6 +52,11 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
 
     EXT4_INODE *Inode = File->Inode;
     UINT64 DirInoSize = EXT4_INODE_SIZE(Inode);
+
+    if(DirInoSize % Partition->BlockSize) {
+        // Directory inodes need to have block aligned sizes
+        return EFI_VOLUME_CORRUPTED;
+    }
 
 	while(off < DirInoSize)
 	{
@@ -57,7 +72,6 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
 
 		for(CHAR8 *b = buf; b < buf + Partition->BlockSize; )
 		{
-
 			EXT4_DIR_ENTRY *entry = (EXT4_DIR_ENTRY *) b;
 			ASSERT(entry->size != 0);
 
@@ -79,6 +93,13 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
              */
             if(entry->lsbit_namelen > EXT4_NAME_MAX)
                 continue;
+            
+            // Unused entry
+            if(entry->inode == 0)
+            {
+                b += entry->size;
+                continue;
+            }
 
             CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1];
 
@@ -115,15 +136,20 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
 	return EFI_NOT_FOUND;
 }
 
-EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
-                        OUT EXT4_FILE **OutFile)
-{
-    EXT4_DIR_ENTRY Entry;
-    EFI_STATUS st = Ext4RetrieveDirent(Directory, Name, Partition, &Entry);
+/**
+   Opens a file using a directory entry.
+ 
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      OpenMode    Mode in which the file is supposed to be open.
+   @param[out]     OutFile     Pointer to the newly opened file.
+   @param[in]      Entry       Directory entry to be used.
 
-    if (EFI_ERROR(st))
-        return st;
-        
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4OpenDirent(EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_FILE **OutFile,
+                          EXT4_DIR_ENTRY *Entry)
+{
+    EFI_STATUS st;
     EXT4_FILE *File = AllocateZeroPool(sizeof(EXT4_FILE));
     if (!File)
     {
@@ -133,7 +159,7 @@ EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION
 
     CHAR16 FileName[EXT4_NAME_MAX + 1];
 
-    st = Ext4GetUcs2DirentName(&Entry, FileName);
+    st = Ext4GetUcs2DirentName(Entry, FileName);
 
     if (EFI_ERROR(st))
     {
@@ -151,11 +177,11 @@ EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION
     // This should not fail.
     StrCpyS(File->FileName, EXT4_NAME_MAX + 1, FileName);
 
-    File->InodeNum = Entry.inode;
+    File->InodeNum = Entry->inode;
 
     Ext4SetupFile(File, (EXT4_PARTITION *) Partition);
 
-    st = Ext4ReadInode(Partition, Entry.inode, &File->Inode);
+    st = Ext4ReadInode(Partition, Entry->inode, &File->Inode);
 
     if (EFI_ERROR(st))
     {
@@ -177,6 +203,34 @@ Error:
     }
 
     return st;
+}
+
+/**
+   Opens a file.
+
+   @param[in]      Directory   Pointer to the opened directory.
+   @param[in]      Name        Pointer to the UCS-2 formatted filename.
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      OpenMode    Mode in which the file is supposed to be open.
+   @param[out]     OutFile     Pointer to the newly opened file.
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4OpenFile(EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
+                        OUT EXT4_FILE **OutFile)
+{
+    EXT4_DIR_ENTRY Entry;
+    EFI_STATUS st = Ext4RetrieveDirent(Directory, Name, Partition, &Entry);
+
+    if (EFI_ERROR(st))
+        return st;
+    
+    // EFI requires us to error out on ".." opens for the root directory
+    if (Entry.inode == Directory->InodeNum) {
+        return EFI_NOT_FOUND;
+    }
+    
+    return Ext4OpenDirent(Partition, OpenMode, OutFile, &Entry);
 }
 
 EFI_STATUS EFIAPI Ext4OpenVolume(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI_FILE_PROTOCOL **Root)
@@ -208,4 +262,118 @@ EFI_STATUS EFIAPI Ext4OpenVolume(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI
     *Root = &RootDir->Protocol;
 
     return EFI_SUCCESS;
+}
+
+BOOLEAN Ext4ValidDirent(EXT4_DIR_ENTRY *Dirent)
+{
+    UINTN RequiredSize = Dirent->lsbit_namelen + EXT4_MIN_DIR_ENTRY_LEN;
+    if (Dirent->size < RequiredSize)
+    {
+        DEBUG((EFI_D_ERROR, "[ext4] dirent size %lu too small (compared to %lu)\n", Dirent->size, RequiredSize));
+        return FALSE;
+    }
+    
+    // Dirent sizes need to be 4 byte aligned
+    if (Dirent->size % 4)
+        return FALSE;
+
+    return TRUE;
+}
+
+/**
+   Reads a directory entry.
+ 
+   @param[in]      Partition   Pointer to the ext4 partition.
+   @param[in]      File        Pointer to the open directory.
+   @param[out]     Buffer      Pointer to the output buffer.
+   @param[in]      Offset      Initial directory position.
+   @param[in out] OutLength    Pointer to a UINT64 that contains the length of the buffer,
+                               and the length of the actual EFI_FILE_INFO after the call. 
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *OutLength)
+{
+    DEBUG((EFI_D_INFO, "[ext4] Ext4ReadDir offset %lu\n", Offset));
+    EXT4_INODE *DirIno = File->Inode;
+    EFI_STATUS st = EFI_SUCCESS;
+
+    UINT64 DirInoSize = Ext4InodeSize(DirIno);
+    UINT64 Len;
+
+    if(DirInoSize % Partition->BlockSize) {
+        // Directory inodes need to have block aligned sizes
+        return EFI_VOLUME_CORRUPTED;
+    }
+
+    EXT4_DIR_ENTRY Entry;
+
+    while(TRUE) {
+        // We (try to) read the maximum size of a directory entry at a time
+        // Note that we don't need to read any padding that may exist after it.
+        Len = sizeof(Entry);
+        st = Ext4Read(Partition, File->Inode, &Entry, Offset, &Len);
+
+        if (EFI_ERROR(st)) {
+            goto Out;
+        }
+
+        DEBUG((EFI_D_INFO, "[ext4] Length read %lu, offset %lu\n", Len, Offset));
+
+        if (Len == 0) {
+            *OutLength = 0;
+            st = EFI_SUCCESS;
+            goto Out;
+        }
+
+        if (Len < EXT4_MIN_DIR_ENTRY_LEN) {
+            st = EFI_VOLUME_CORRUPTED;
+            goto Out;
+        }
+
+        // Invalid directory entry length
+        if (!Ext4ValidDirent(&Entry)) {
+            DEBUG((EFI_D_INFO, "Invalid dirent\n"));
+            st = EFI_VOLUME_CORRUPTED;
+            goto Out;
+        }
+
+        DEBUG((EFI_D_INFO, "[ext4] dirent size %lu\n", Entry.size));
+
+        if (Entry.inode == 0) {
+            // When inode = 0, it's unused
+            Offset += Entry.size;
+            continue;
+        }
+
+        EXT4_FILE *TempFile = NULL;
+
+        st = Ext4OpenDirent(Partition, EFI_FILE_MODE_READ, &TempFile, &Entry);
+
+        if (EFI_ERROR(st)) {
+            goto Out;
+        }
+
+        
+        if (!StrCmp(TempFile->FileName, L".") || !StrCmp(TempFile->FileName, L".."))
+        {
+            Offset += Entry.size;
+            continue;
+        }
+
+        DEBUG((EFI_D_INFO, "[ext4] Listing file %s\n", TempFile->FileName));
+
+        st = Ext4GetFileInfo(TempFile, Buffer, OutLength);
+        if (!EFI_ERROR(st)) {
+            File->Position = Offset + Entry.size;
+        }
+
+        Ext4CloseInternal(TempFile);
+
+        break;
+    }
+
+    st = EFI_SUCCESS;
+Out:
+    return st;
 }
