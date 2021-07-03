@@ -5,9 +5,8 @@
  * 
  */
 
-#include "AutoGen.h"
 #include "Ext4.h"
-#include "Guid/FileSystemInfo.h"
+#include <Guid/FileSystemInfo.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -94,6 +93,11 @@ EFI_STATUS EFIAPI Ext4Open(
     // we're the last token.
 
     // TODO: Symlinks?
+
+    if (!Ext4FileIsDir(Current)) {
+      return EFI_INVALID_PARAMETER;
+    }
+
     EFI_STATUS st = Ext4OpenFile(Current, PathSegment, Partition, EFI_FILE_MODE_READ, &File);
 
     if(EFI_ERROR(st) && st != EFI_NOT_FOUND)
