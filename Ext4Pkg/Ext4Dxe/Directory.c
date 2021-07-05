@@ -355,9 +355,11 @@ EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer,
         }
 
         
+        // TODO: Is this needed?
         if (!StrCmp(TempFile->FileName, L".") || !StrCmp(TempFile->FileName, L".."))
         {
             Offset += Entry.size;
+            Ext4CloseInternal(TempFile);
             continue;
         }
 
