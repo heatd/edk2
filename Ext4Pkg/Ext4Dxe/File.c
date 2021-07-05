@@ -172,6 +172,7 @@ EFI_STATUS Ext4CloseInternal(
   DEBUG((EFI_D_INFO, "[ext4] Closed file %p (inode %lu)\n", File, File->InodeNum));
   FreePool(File->FileName);
   FreePool(File->Inode);
+  Ext4FreeExtentsMap(File);
   FreePool(File);
   return EFI_SUCCESS;
 }
@@ -200,7 +201,7 @@ EFIAPI Ext4ReadFile(
   if(Ext4FileIsReg(File))
   {
     UINT64 Length = *BufferSize;
-    EFI_STATUS st = Ext4Read(Partition, File->Inode, Buffer, File->Position, &Length);
+    EFI_STATUS st = Ext4Read(Partition, File, Buffer, File->Position, &Length);
     if(st == EFI_SUCCESS)
     {
       *BufferSize = (UINTN) Length;
@@ -411,6 +412,13 @@ static EXT4_FILE *Ext4DuplicateFile(IN CONST EXT4_FILE *Original)
   Ext4SetupFile(File, Partition);
   File->InodeNum = Original->InodeNum;
   File->OpenMode = 0; // Will be filled by other code
+
+  if (!Ext4InitExtentsMap(File)) {
+    FreePool(File->FileName);
+    FreePool(File->Inode);
+    FreePool(File);
+    return NULL;
+  }
   
   return File;
 }

@@ -27,6 +27,7 @@
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/OrderedCollectionLib.h>
 
 #include "Ext4Disk.h"
 
@@ -42,9 +43,9 @@ typedef struct _Ext4File EXT4_FILE;
 typedef struct _Ext4_PARTITION
 {
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL Interface;
-  EFI_DISK_IO_PROTOCOL *diskIo;
-  EFI_DISK_IO2_PROTOCOL *diskIo2;
-  EFI_BLOCK_IO_PROTOCOL *blockIo;
+  EFI_DISK_IO_PROTOCOL *DiskIo;
+  EFI_DISK_IO2_PROTOCOL *DiskIo2;
+  EFI_BLOCK_IO_PROTOCOL *BlockIo;
 
   EXT4_SUPERBLOCK SuperBlock;
 
@@ -67,22 +68,22 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition);
 
 static inline EFI_BLOCK_IO_PROTOCOL *Ext4BlockIo(EXT4_PARTITION *Partition)
 {
-  return Partition->blockIo;
+  return Partition->BlockIo;
 }
 
 static inline EFI_DISK_IO_PROTOCOL *Ext4DiskIo(EXT4_PARTITION *Partition)
 {
-  return Partition->diskIo;
+  return Partition->DiskIo;
 }
 
 static inline EFI_DISK_IO2_PROTOCOL *Ext4DiskIo2(EXT4_PARTITION *Partition)
 {
-  return Partition->diskIo2;
+  return Partition->DiskIo2;
 }
 
 static inline UINT32 Ext4MediaId(EXT4_PARTITION *Partition)
 {
-  return Partition->blockIo->Media->MediaId;
+  return Partition->BlockIo->Media->MediaId;
 }
 
 EFI_STATUS Ext4ReadDiskIo(EXT4_PARTITION *Partition, VOID *Buffer, UINTN Length, UINT64 Offset);
@@ -114,14 +115,14 @@ static inline UINT64 Ext4BlockToByteOffset(const EXT4_PARTITION *Partition, EXT4
   return Partition->BlockSize * Block;
 }
 
-EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *Length);
+EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *Length);
 
 static inline UINT64 Ext4InodeSize(EXT4_INODE *Inode)
 {
   return ((UINT64) Inode->i_size_hi << 32) | Inode->i_size_lo;
 }
 
-EFI_STATUS Ext4GetExtent(EXT4_PARTITION *Partition, EXT4_INODE *Inode, EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent); 
+EFI_STATUS Ext4GetExtent(EXT4_PARTITION *Partition, EXT4_FILE *File, EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent); 
 
 struct _Ext4File
 {
@@ -134,6 +135,8 @@ struct _Ext4File
 
   EXT4_PARTITION *Partition;
   CHAR16 *FileName;
+
+  ORDERED_COLLECTION *ExtentsMap;
 };
 
 /**
@@ -324,5 +327,23 @@ EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT U
 */
 EFI_STATUS Ext4ReadDir(IN EXT4_PARTITION *Partition, IN EXT4_FILE *File,
                        OUT VOID *Buffer, IN UINT64 Offset, IN OUT UINT64 *OutLength);
+
+/**
+   Initialises the (empty) extents map, that will work as a cache of extents.
+ 
+   @param[in]      File        Pointer to the open file.
+
+   @retval EFI_STATUS          Result of the operation
+*/
+EFI_STATUS Ext4InitExtentsMap(IN EXT4_FILE *File);
+
+/**
+   Frees the extents map, deleting every extent stored.
+ 
+   @param[in]      File        Pointer to the open file.
+
+   @retval none
+*/
+void Ext4FreeExtentsMap(IN EXT4_FILE *File);
 
 #endif

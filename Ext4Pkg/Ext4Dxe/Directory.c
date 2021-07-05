@@ -7,6 +7,7 @@
 #include "Ext4.h"
 #include "Library/BaseLib.h"
 #include "Library/MemoryAllocationLib.h"
+#include "Library/OrderedCollectionLib.h"
 #include "Uefi/UefiBaseType.h"
 
 /**
@@ -62,7 +63,7 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
 	{
         UINT64 Length = Partition->BlockSize;
 
-		st = Ext4Read(Partition, Inode, buf, off, &Length);
+		st = Ext4Read(Partition, File, buf, off, &Length);
 
 		if (st != EFI_SUCCESS)
 		{
@@ -174,6 +175,12 @@ EFI_STATUS Ext4OpenDirent(EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_F
         goto Error;
     }
 
+    st = Ext4InitExtentsMap(File);
+
+    if (EFI_ERROR(st)) {
+        goto Error;
+    }
+
     // This should not fail.
     StrCpyS(File->FileName, EXT4_NAME_MAX + 1, FileName);
 
@@ -193,10 +200,14 @@ EFI_STATUS Ext4OpenDirent(EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_F
     return EFI_SUCCESS;
 
 Error:
-    if(File)
+    if (File)
     {
-        if(File->FileName) {
+        if (File->FileName) {
             FreePool(File->FileName);
+        }
+
+        if (File->ExtentsMap) {
+            OrderedCollectionUninit(File->ExtentsMap);
         }
 
         FreePool(File);
@@ -251,12 +262,26 @@ EFI_STATUS EFIAPI Ext4OpenVolume(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI
         return EFI_OUT_OF_RESOURCES;
     }
 
-    // The filename will be "/"(null terminated of course)
+    // The filename will be "\"(null terminated of course)
     RootDir->FileName = AllocateZeroPool(2);
 
+    if (!RootDir->FileName) {
+        FreePool(RootDir);
+        FreePool(RootInode);
+        return EFI_OUT_OF_RESOURCES;
+    }
+
+    RootDir->FileName[0] = L'\\';
 
     RootDir->Inode = RootInode;
     RootDir->InodeNum = 2;
+
+    if (EFI_ERROR(Ext4InitExtentsMap(RootDir))) {
+        FreePool(RootDir->FileName);
+        FreePool(RootInode);
+        FreePool(RootDir);
+        return EFI_OUT_OF_RESOURCES;
+    }
 
     Ext4SetupFile(RootDir, (EXT4_PARTITION *) Partition);
     *Root = &RootDir->Protocol;
@@ -312,7 +337,7 @@ EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer,
         // We (try to) read the maximum size of a directory entry at a time
         // Note that we don't need to read any padding that may exist after it.
         Len = sizeof(Entry);
-        st = Ext4Read(Partition, File->Inode, &Entry, Offset, &Len);
+        st = Ext4Read(Partition, File, &Entry, Offset, &Len);
 
         if (EFI_ERROR(st)) {
             goto Out;

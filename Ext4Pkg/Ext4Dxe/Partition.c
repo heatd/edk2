@@ -17,9 +17,9 @@ EFI_STATUS Ext4OpenPartition(EFI_HANDLE DeviceHandle, EFI_DISK_IO_PROTOCOL *disk
   if(!part)
       return EFI_OUT_OF_RESOURCES;
   
-  part->blockIo = blockIo;
-  part->diskIo = diskIo;
-  part->diskIo2 = diskIo2;
+  part->BlockIo = blockIo;
+  part->DiskIo = diskIo;
+  part->DiskIo2 = diskIo2;
 
   EFI_STATUS st = Ext4OpenSuperblock(part);
 

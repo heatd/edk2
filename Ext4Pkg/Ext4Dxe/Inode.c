@@ -8,9 +8,10 @@
 
 #include <Uefi.h>
 
-EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, void *Buffer, UINT64 Offset, IN OUT UINT64 *Length)
+EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UINT64 Offset, IN OUT UINT64 *Length)
 {
     //DEBUG((EFI_D_INFO, "Ext4Read[Offset %lu, Length %lu]\n", Offset, *Length));
+    EXT4_INODE *Inode = File->Inode;
     UINT64 InodeSize = Ext4InodeSize(Inode);
 
     if(Offset > InodeSize)
@@ -33,7 +34,7 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_INODE *Inode, void *Buffer, 
         // The algorithm here is to get the extent corresponding to the current block
         // and then read as much as we can from the current extent.
 
-        EFI_STATUS st = Ext4GetExtent(Partition, Inode, CurrentSeek / Partition->BlockSize, &Extent);
+        EFI_STATUS st = Ext4GetExtent(Partition, File, CurrentSeek / Partition->BlockSize, &Extent);
 
         if(st != EFI_SUCCESS && st != EFI_NO_MAPPING)
             return st;
