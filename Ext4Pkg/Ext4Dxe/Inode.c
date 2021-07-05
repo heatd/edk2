@@ -7,6 +7,7 @@
 #include "Ext4.h"
 
 #include <Uefi.h>
+#include <Library/TimeBaseLib.h>
 
 EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UINT64 Offset, IN OUT UINT64 *Length)
 {
@@ -117,10 +118,35 @@ UINT64 Ext4FilePhysicalSpace(EXT4_FILE *File)
     return Blocks * 512;
 }
 
-void Ext4FileATime(IN EXT4_FILE *File, OUT EFI_TIME *Time)
-{
-    
+#define EXT4_EXTRA_TIMESTAMP_MASK       ((1 << 2) - 1)
+
+#define EXT4_FILE_GET_TIME_GENERIC(Name, Field)            \
+void Ext4File##Name(IN EXT4_FILE *File, OUT EFI_TIME *Time) \
+{                                                          \
+    EXT4_INODE *Inode = File->Inode;                       \
+    UINT64 SecondsEpoch = Inode->Field;                   \
+    UINT32 Nanoseconds = 0;                                \
+                                                           \
+    if (Ext4InodeHasField(Inode, Field##_extra)) {          \
+        SecondsEpoch |= ((UINT64) (Inode->Field##_extra & EXT4_EXTRA_TIMESTAMP_MASK)) << 32; \
+        Nanoseconds = Inode->Field##_extra >> 2;                                            \
+    }                                                                                       \
+    EpochToEfiTime(SecondsEpoch, Time);                                                     \
+    Time->Nanosecond = Nanoseconds;                                                         \
 }
 
-void Ext4FileMTime(IN EXT4_FILE *File, OUT EFI_TIME *Time){}
-void Ext4FileCreateTime(IN EXT4_FILE *File, OUT EFI_TIME *Time){}
+EXT4_FILE_GET_TIME_GENERIC(ATime, i_atime);
+EXT4_FILE_GET_TIME_GENERIC(MTime, i_mtime);
+static EXT4_FILE_GET_TIME_GENERIC(CrTime, i_crtime);
+
+void Ext4FileCreateTime(IN EXT4_FILE *File, OUT EFI_TIME *Time)
+{
+    EXT4_INODE *Inode = File->Inode;
+
+    if (!Ext4InodeHasField(Inode, i_crtime)) {
+        SetMem(Time, sizeof(EFI_TIME), 0);
+        return;
+    }
+
+    Ext4FileCrTime(File, Time);
+}

@@ -57,6 +57,7 @@
   DebugLib
   PcdLib
   OrderedCollectionLib
+  TimeBaseLib
 
 [Guids]
   gEfiFileInfoGuid                      ## SOMETIMES_CONSUMES   ## UNDEFINED

@@ -257,6 +257,9 @@ static inline BOOLEAN Ext4FileIsOpenable(IN const EXT4_FILE *File)
   return Ext4FileIsReg(File) || Ext4FileIsDir(File);
 }
 
+#define Ext4InodeHasField(Inode, Field) (Inode->i_extra_isize - EXT4_GOOD_OLD_INODE_SIZE >= OFFSET_OF(EXT4_INODE, Field) + \
+         sizeof(((EXT4_INODE *) NULL)->Field))
+
 UINT64 Ext4FilePhysicalSpace(EXT4_FILE *File);
 
 void Ext4FileATime(IN EXT4_FILE *File, OUT EFI_TIME *Time);
