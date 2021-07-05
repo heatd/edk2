@@ -135,7 +135,7 @@ Ext4EntryPoint (
   
   if(EFI_ERROR(st))
     return st;
-  
+
   return Ext4InitialiseUnicodeCollation(ImageHandle);
 }
 

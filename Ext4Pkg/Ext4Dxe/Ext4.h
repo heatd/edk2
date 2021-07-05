@@ -62,6 +62,8 @@ typedef struct _Ext4_PARTITION
   UINT32 DescSize;
   EXT4_FILE *Root;
 
+  UINT32 InitialSeed;
+
 } EXT4_PARTITION;
 
 EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition);
@@ -348,5 +350,27 @@ EFI_STATUS Ext4InitExtentsMap(IN EXT4_FILE *File);
    @retval none
 */
 void Ext4FreeExtentsMap(IN EXT4_FILE *File);
+
+/**
+   Calculates the CRC32c checksum of the given buffer.
+ 
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @retval UINT32   The CRC32c checksum. 
+*/
+UINT32 CalculateCrc32c(CONST VOID *Buffer, UINTN Length, UINT32 InitialValue);
+
+/**
+   Calculates the checksum of the given buffer.
+   @param[in]      Partition     Pointer to the opened EXT4 partition.
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @retval UINT32   The checksum. 
+*/
+UINT32 Ext4CalculateChecksum(EXT4_PARTITION *Partition, CONST VOID *Buffer, UINTN Length, UINT32 InitialValue);
 
 #endif

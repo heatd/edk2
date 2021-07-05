@@ -41,6 +41,7 @@
   Extents.c
   File.c
   Collation.c
+  Crc32c.c
 
 [Packages]
   EmbeddedPkg/EmbeddedPkg.dec

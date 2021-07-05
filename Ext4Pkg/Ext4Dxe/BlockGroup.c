@@ -16,9 +16,10 @@ EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_I
     UINTN InodeOffset = (InodeNum - 1) % Partition->SuperBlock.s_inodes_per_group;
 
     EXT4_INODE *Inode = AllocatePool(Partition->InodeSize);
-    if(!Inode)
+    if (!Inode) {
         return EFI_OUT_OF_RESOURCES;
-    
+    }
+
     EXT4_BLOCK_GROUP_DESC *BlockGroup = Ext4GetBlockGroupDesc(Partition, BlockGroupNumber);
 
     // TODO: INODE_UNINIT
@@ -28,8 +29,7 @@ EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_I
     
     EFI_STATUS st = Ext4ReadDiskIo(Partition, Inode, Partition->InodeSize,
                    Ext4BlockToByteOffset(Partition, InodeTableStart) + InodeOffset * Partition->InodeSize);
-    if(EFI_ERROR(st))
-    {
+    if (EFI_ERROR(st)) {
         FreePool(Inode);
         return st;
     }

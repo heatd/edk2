@@ -38,10 +38,26 @@ BOOLEAN Ext4SuperblockValidate(EXT4_SUPERBLOCK *sb)
   if(sb->s_rev_level != EXT4_DYNAMIC_REV && sb->s_rev_level != EXT4_GOOD_OLD_REV)
     return FALSE;
 
+  // TODO: Is this correct behaviour? Imagine the power cuts out, should the system fail to boot because
+  // we're scared of touching something corrupt?
   if((sb->s_state & EXT4_FS_STATE_UNMOUNTED) == 0)
     return FALSE;
 
   return TRUE;
+}
+
+STATIC UINT32 Ext4CalculateSuperblockChecksum(EXT4_PARTITION *Partition, CONST EXT4_SUPERBLOCK *sb)
+{
+  // Most checksums require us to go through a dummy 0 as part of the requirement
+  // that the checksum is done over a structure with its checksum field = 0.
+  UINT32 Checksum = Ext4CalculateChecksum(Partition, sb, OFFSET_OF(EXT4_SUPERBLOCK, s_checksum),
+                                          ~0);
+  return Checksum;
+}
+
+STATIC BOOLEAN Ext4VerifySuperblockChecksum(EXT4_PARTITION *Partition, CONST EXT4_SUPERBLOCK *sb)
+{
+  return sb->s_checksum == Ext4CalculateSuperblockChecksum(Partition, sb);
 }
 
 EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
@@ -82,6 +98,18 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
     DEBUG((EFI_D_INFO, "[Ext4] Unsupported %lx\n", Partition->FeaturesIncompat & ~supported_incompat_feat));
     return EFI_UNSUPPORTED;
   }
+
+  // At the time of writing, it's the only supported checksum.
+  if (Partition->FeaturesCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM &&
+      sb->s_checksum_type != EXT4_CHECKSUM_CRC32C) {
+    return EFI_UNSUPPORTED;
+  }
+
+  if (Partition->FeaturesIncompat & EXT4_FEATURE_INCOMPAT_CSUM_SEED) {
+    Partition->InitialSeed = sb->s_checksum_seed;
+  } else {
+    Partition->InitialSeed = Ext4CalculateChecksum(Partition, sb->s_uuid, 16, ~0);
+  }
   
   UINT32 unsupported_ro_compat = Partition->FeaturesRoCompat & ~supported_ro_compat_feat; 
   if (unsupported_ro_compat != 0)
@@ -116,14 +144,43 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
     return EFI_VOLUME_CORRUPTED;
   }
 
+  if (!Ext4VerifySuperblockChecksum(Partition, sb)) {
+    DEBUG((EFI_D_ERROR, "[ext4] Bad superblock checksum %lx\n", Ext4CalculateSuperblockChecksum(Partition, sb)));
+    return EFI_VOLUME_CORRUPTED;
+  }
+
   EXT4_BLOCK_NR NrBlocks = Partition->NumberBlockGroups * Partition->DescSize;
   Partition->BlockGroups = Ext4AllocAndReadBlocks(Partition, NrBlocks, Partition->BlockSize == 1024 ? 2 : 1);
 
   if (!Partition->BlockGroups)
     return EFI_OUT_OF_RESOURCES;
-  
+
   // Note that the cast below is completely safe, because EXT4_FILE is a specialisation of EFI_FILE_PROTOCOL
   st = Ext4OpenVolume(&Partition->Interface, (EFI_FILE_PROTOCOL **) &Partition->Root);
   DEBUG((EFI_D_INFO, "[ext4] Root File %p\n", Partition->Root));
   return st;
+}
+
+/**
+   Calculates the checksum of the given buffer.
+   @param[in]      Partition     Pointer to the opened EXT4 partition.
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @retval UINT32   The checksum. 
+*/
+UINT32 Ext4CalculateChecksum(EXT4_PARTITION *Partition, CONST VOID *Buffer, UINTN Length, UINT32 InitialValue)
+{
+  if(!(Partition->FeaturesRoCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+    return 0;
+  
+  switch(Partition->SuperBlock.s_checksum_type)
+  {
+    case EXT4_CHECKSUM_CRC32C:
+      // For some reason, EXT4 really likes non-inverted CRC32C checksums, so we stick to that here.
+      return ~CalculateCrc32c(Buffer, Length, ~InitialValue);
+    default:
+      UNREACHABLE();
+  }
 }
