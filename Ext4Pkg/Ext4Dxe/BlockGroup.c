@@ -1,19 +1,20 @@
 /**
  * @brief Block group related routines
  *
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
+ * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include "Library/MemoryAllocationLib.h"
-#include "Uefi/UefiBaseType.h"
 
-#include <Uefi.h>
 
 EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_INODE **OutIno)
 {
-    UINTN BlockGroupNumber = (InodeNum - 1) / Partition->SuperBlock.s_inodes_per_group;
-    UINTN InodeOffset = (InodeNum - 1) % Partition->SuperBlock.s_inodes_per_group;
+    UINT64 InodeOffset;
+    UINTN BlockGroupNumber = (UINTN) DivU64x64Remainder(InodeNum - 1,
+                                                Partition->SuperBlock.s_inodes_per_group,
+                                                &InodeOffset);
 
     EXT4_INODE *Inode = AllocatePool(Partition->InodeSize);
     if (!Inode) {
@@ -30,6 +31,8 @@ EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_I
     EFI_STATUS st = Ext4ReadDiskIo(Partition, Inode, Partition->InodeSize,
                    Ext4BlockToByteOffset(Partition, InodeTableStart) + InodeOffset * Partition->InodeSize);
     if (EFI_ERROR(st)) {
+        DEBUG((EFI_D_INFO, "Error st %x; inode offset %lx inode table start %lu block group %lu\n", st, InodeOffset,
+                            InodeTableStart, BlockGroupNumber));
         FreePool(Inode);
         return st;
     }

@@ -1,7 +1,9 @@
 ## @file
 #  Ext4 Package
 #
-#  Ext4 Driver
+#  This package provides libraries and drivers related to the ext4 filesystem implementation.
+#  More details are available at: https://www.kernel.org/doc/html/v5.4/filesystems/ext4/index.html
+#
 #  Copyright (c) 2021 Pedro Falcato
 #
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -20,10 +22,6 @@
   SKUID_IDENTIFIER               = DEFAULT
 
 [BuildOptions]
-  GCC:RELEASE_*_*_CC_FLAGS             = -DMDEPKG_NDEBUG
-  INTEL:RELEASE_*_*_CC_FLAGS           = /D MDEPKG_NDEBUG
-  MSFT:RELEASE_*_*_CC_FLAGS            = /D MDEPKG_NDEBUG
-  RVCT:RELEASE_*_*_CC_FLAGS            = -DMDEPKG_NDEBUG
   *_*_*_CC_FLAGS                       = -D DISABLE_NEW_DEPRECATED_INTERFACES
 
 [LibraryClasses]
@@ -46,7 +44,7 @@
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
-  OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
+  OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 ###################################################################################################
 #
@@ -68,4 +66,4 @@
 ###################################################################################################
 
 [Components]
-  Ext4Pkg/Ext4Dxe/Ext4.inf
+  Ext4Pkg/Ext4Dxe/Ext4Dxe.inf

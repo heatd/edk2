@@ -1,14 +1,12 @@
 /**
  * @brief Directory related routines
  *
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
+ * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include "Library/BaseLib.h"
-#include "Library/MemoryAllocationLib.h"
-#include "Library/OrderedCollectionLib.h"
-#include "Uefi/UefiBaseType.h"
 
 /**
    Retrieves the filename of the directory entry and converts it to UTF-16/UCS-2
@@ -54,14 +52,17 @@ EFI_STATUS Ext4RetrieveDirent(EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITIO
     EXT4_INODE *Inode = File->Inode;
     UINT64 DirInoSize = EXT4_INODE_SIZE(Inode);
 
-    if(DirInoSize % Partition->BlockSize) {
+    UINT32 BlockRemainder;
+
+    DivU64x32Remainder(DirInoSize, Partition->BlockSize, &BlockRemainder);
+    if(BlockRemainder != 0) {
         // Directory inodes need to have block aligned sizes
         return EFI_VOLUME_CORRUPTED;
     }
 
 	while(off < DirInoSize)
 	{
-        UINT64 Length = Partition->BlockSize;
+        UINTN Length = Partition->BlockSize;
 
 		st = Ext4Read(Partition, File, buf, off, &Length);
 
@@ -312,21 +313,23 @@ BOOLEAN Ext4ValidDirent(EXT4_DIR_ENTRY *Dirent)
    @param[in]      File        Pointer to the open directory.
    @param[out]     Buffer      Pointer to the output buffer.
    @param[in]      Offset      Initial directory position.
-   @param[in out] OutLength    Pointer to a UINT64 that contains the length of the buffer,
+   @param[in out] OutLength    Pointer to a UINTN that contains the length of the buffer,
                                and the length of the actual EFI_FILE_INFO after the call. 
 
    @retval EFI_STATUS          Result of the operation
 */
-EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *OutLength)
+EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *OutLength)
 {
     DEBUG((EFI_D_INFO, "[ext4] Ext4ReadDir offset %lu\n", Offset));
     EXT4_INODE *DirIno = File->Inode;
     EFI_STATUS st = EFI_SUCCESS;
 
     UINT64 DirInoSize = Ext4InodeSize(DirIno);
-    UINT64 Len;
+    UINTN Len;
+    UINT32 BlockRemainder;
 
-    if(DirInoSize % Partition->BlockSize) {
+    DivU64x32Remainder(DirInoSize, Partition->BlockSize, &BlockRemainder);
+    if(BlockRemainder != 0) {
         // Directory inodes need to have block aligned sizes
         return EFI_VOLUME_CORRUPTED;
     }

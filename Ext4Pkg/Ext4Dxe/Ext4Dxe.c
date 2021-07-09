@@ -1,12 +1,12 @@
 /**
  * @file Driver entry point
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include <Library/DebugLib.h>
 
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE mExt4DriverNameTable[] = {
   {
@@ -63,7 +63,6 @@ Ext4ComponentNameGetDriverName (
                               mExt4DriverNameTable,
                               DriverName,
                               (BOOLEAN)(This == &gExt4ComponentName));
-  // TODO: What does this last parameter? Are we testing whether we're NAME or NAME2? Investigate.
 }
 
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL  gExt4ComponentName = {

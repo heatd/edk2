@@ -1,14 +1,12 @@
 /**
  * @file Driver entry point
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include <Library/BaseLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include <Protocol/SimpleFileSystem.h>
 
 EFI_STATUS Ext4OpenPartition(EFI_HANDLE DeviceHandle, EFI_DISK_IO_PROTOCOL *diskIo,
                              EFI_DISK_IO2_PROTOCOL *diskIo2, EFI_BLOCK_IO_PROTOCOL *blockIo)

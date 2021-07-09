@@ -1,7 +1,9 @@
 ## @file
 #  Ext4 Package
 #
-#  Ext4 Driver
+#  UEFI Driver that produces the Simple File System Protocol for a partition that is formatted
+#  with the EXT4 file system.
+#
 #  Copyright (c) 2021 Pedro Falcato
 #
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -31,7 +33,7 @@
 #
 
 [Sources]
-  Main.c
+  Ext4Dxe.c
   Partition.c
   DiskUtil.c
   Superblock.c

@@ -1,8 +1,9 @@
 /**
  * @file Raw filesystem data structures 
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+  * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #ifndef _EXT4_DISK_H
@@ -11,9 +12,9 @@
 #include "Base.h"
 #include <Uefi.h>
 
-#define EXT4_SUPERBLOCK_OFFSET		1024
+#define EXT4_SUPERBLOCK_OFFSET		1024U
 
-#define EXT4_SIGNATURE		0xEF53
+#define EXT4_SIGNATURE		0xEF53U
 
 #define EXT4_FS_STATE_UNMOUNTED              0x1
 #define EXT4_FS_STATE_ERRORS_DETECTED        0x2
@@ -348,7 +349,6 @@ typedef struct
 typedef struct
 {
 	// This index covers logical blocks from 'ei_block'
-	// TODO: Until where? Find out.
 	UINT32 ei_block;
 	// Block of the next level of the extent tree, similarly split in a high and low portion.
 	UINT32 ei_leaf_lo;

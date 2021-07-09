@@ -1,18 +1,15 @@
 /**
  * @file EFI_FILE_PROTOCOL implementation for EXT4
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include "Guid/FileInfo.h"
-#include "Library/MemoryAllocationLib.h"
+
+#include <Guid/FileInfo.h>
 #include <Guid/FileSystemInfo.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/BaseLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include <Protocol/SimpleFileSystem.h>
 
 static EXT4_FILE *Ext4DuplicateFile(IN CONST EXT4_FILE *Original);
 
@@ -200,12 +197,10 @@ EFIAPI Ext4ReadFile(
 
   if(Ext4FileIsReg(File))
   {
-    UINT64 Length = *BufferSize;
-    EFI_STATUS st = Ext4Read(Partition, File, Buffer, File->Position, &Length);
+    EFI_STATUS st = Ext4Read(Partition, File, Buffer, File->Position, BufferSize);
     if(st == EFI_SUCCESS)
     {
-      *BufferSize = (UINTN) Length;
-      File->Position += Length;
+      File->Position += *BufferSize;
     }
 
     return st; 
@@ -213,14 +208,12 @@ EFIAPI Ext4ReadFile(
   else if(Ext4FileIsDir(File))
   {
     DEBUG((EFI_D_WARN, "[ext4] ReadDir not implemented\n"));
-    UINT64 Length = *BufferSize;
-    EFI_STATUS st = Ext4ReadDir(Partition, File, Buffer, File->Position, &Length);
+    EFI_STATUS st = Ext4ReadDir(Partition, File, Buffer, File->Position, BufferSize);
     DEBUG((EFI_D_INFO, "[ext4] ReadDir status %lx\n", st));
 
     if(st == EFI_SUCCESS)
     {
-      DEBUG((EFI_D_INFO, "[ext4] ReadDir retlen %lu\n", Length));
-      *BufferSize = (UINTN) Length;
+      DEBUG((EFI_D_INFO, "[ext4] ReadDir retlen %lu\n", *BufferSize));
     }
 
     return st;

@@ -1,15 +1,12 @@
 /**
  * @file Superblock managing routines
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include "Ext4Disk.h"
-#include <Uefi/UefiBaseType.h>
-
-#include <Library/DebugLib.h>
 
 static const UINT32 supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
 
@@ -51,7 +48,7 @@ STATIC UINT32 Ext4CalculateSuperblockChecksum(EXT4_PARTITION *Partition, CONST E
   // Most checksums require us to go through a dummy 0 as part of the requirement
   // that the checksum is done over a structure with its checksum field = 0.
   UINT32 Checksum = Ext4CalculateChecksum(Partition, sb, OFFSET_OF(EXT4_SUPERBLOCK, s_checksum),
-                                          ~0);
+                                          ~0U);
   return Checksum;
 }
 
@@ -108,13 +105,13 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   if (Partition->FeaturesIncompat & EXT4_FEATURE_INCOMPAT_CSUM_SEED) {
     Partition->InitialSeed = sb->s_checksum_seed;
   } else {
-    Partition->InitialSeed = Ext4CalculateChecksum(Partition, sb->s_uuid, 16, ~0);
+    Partition->InitialSeed = Ext4CalculateChecksum(Partition, sb->s_uuid, 16, ~0U);
   }
   
   UINT32 unsupported_ro_compat = Partition->FeaturesRoCompat & ~supported_ro_compat_feat; 
   if (unsupported_ro_compat != 0)
   {
-    DEBUG((EFI_D_INFO, "[Ext4] Unsupported ro compat %lx\n", unsupported_ro_compat));
+    DEBUG((EFI_D_INFO, "[Ext4] Unsupported ro compat %x\n", unsupported_ro_compat));
     Partition->ReadOnly = TRUE;
   }
 
@@ -123,8 +120,14 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
   DEBUG((EFI_D_INFO, "Read only = %u\n", Partition->ReadOnly));
 
   Partition->BlockSize = 1024 << sb->s_log_block_size;
+
+  // The size of a block group can also be calculated as 8 * Partition->BlockSize
+  if(sb->s_blocks_per_group != 8 * Partition->BlockSize) {
+    return EFI_UNSUPPORTED;
+  }
+
   Partition->NumberBlocks = Ext4MakeBlockNumberFromHalfs(Partition, sb->s_blocks_count, sb->s_blocks_count_hi);
-  Partition->NumberBlockGroups = Partition->NumberBlocks / sb->s_blocks_per_group;
+  Partition->NumberBlockGroups = DivU64x32(Partition->NumberBlocks, sb->s_blocks_per_group);
 
   DEBUG((EFI_D_INFO, "[ext4] Number of blocks = %lu\n[ext4] Number of block groups: %lu\n",
          Partition->NumberBlocks, Partition->NumberBlockGroups));
@@ -149,7 +152,14 @@ EFI_STATUS Ext4OpenSuperblock(EXT4_PARTITION *Partition)
     return EFI_VOLUME_CORRUPTED;
   }
 
-  EXT4_BLOCK_NR NrBlocks = Partition->NumberBlockGroups * Partition->DescSize;
+  UINT32 NrBlocksRem;
+  UINTN NrBlocks = (UINTN) DivU64x32Remainder(Partition->NumberBlockGroups * Partition->DescSize,
+                                              Partition->BlockSize, &NrBlocksRem);
+
+  if(NrBlocksRem != 0) {
+    NrBlocks++;
+  }
+
   Partition->BlockGroups = Ext4AllocAndReadBlocks(Partition, NrBlocks, Partition->BlockSize == 1024 ? 2 : 1);
 
   if (!Partition->BlockGroups)

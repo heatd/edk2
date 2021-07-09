@@ -1,14 +1,14 @@
 /**
  * @file Unicode collation routines
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Uefi/UefiBaseType.h"
 #include <Uefi.h>
+
 #include <Library/UefiLib.h>
-#include <Library/BaseLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
 
@@ -50,7 +50,7 @@ static EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
   }
 
   // Note: FatPkg also doesn't close unneeded protocols.
-  // This sounds like a leak but I'm likely wrong.
+  // This looks like a leak but I'm likely wrong.
   for(UINTN i = 0; i < NumHandles; i++)
   {
     st = gBS->OpenProtocol(Handles[i],

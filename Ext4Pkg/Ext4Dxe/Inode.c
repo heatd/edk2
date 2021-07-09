@@ -1,7 +1,9 @@
 /**
  * @brief Inode related routines
  *
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
+ * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
@@ -9,7 +11,7 @@
 #include <Uefi.h>
 #include <Library/TimeBaseLib.h>
 
-EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UINT64 Offset, IN OUT UINT64 *Length)
+EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UINT64 Offset, IN OUT UINTN *Length)
 {
     //DEBUG((EFI_D_INFO, "Ext4Read[Offset %lu, Length %lu]\n", Offset, *Length));
     EXT4_INODE *Inode = File->Inode;
@@ -19,8 +21,8 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
         return EFI_DEVICE_ERROR;
     
     UINT64 CurrentSeek = Offset;
-    UINT64 RemainingRead = *Length;
-    UINT64 BeenRead = 0;
+    UINTN RemainingRead = *Length;
+    UINTN BeenRead = 0;
 
     if (RemainingRead > InodeSize - Offset)
     {
@@ -29,13 +31,16 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
 
     while(RemainingRead != 0)
     {
-        UINT64 WasRead = 0;
+        UINTN WasRead = 0;
         EXT4_EXTENT Extent;
 
         // The algorithm here is to get the extent corresponding to the current block
         // and then read as much as we can from the current extent.
+        UINT32 BlockOff;
 
-        EFI_STATUS st = Ext4GetExtent(Partition, File, CurrentSeek / Partition->BlockSize, &Extent);
+        EFI_STATUS st = Ext4GetExtent(Partition, File,
+                                      DivU64x32Remainder(CurrentSeek, Partition->BlockSize, &BlockOff),
+                                      &Extent);
 
         if(st != EFI_SUCCESS && st != EFI_NO_MAPPING)
             return st;
@@ -44,8 +49,8 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
 
         if(!HasBackingExtent)
         {
-            UINT64 HoleOff = CurrentSeek % Partition->BlockSize;
-            UINT64 HoleLen = Partition->BlockSize - HoleOff;
+            UINT32 HoleOff = BlockOff;
+            UINTN HoleLen = Partition->BlockSize - HoleOff;
             WasRead = HoleLen > RemainingRead ? RemainingRead : HoleLen;
             // TODO: Get the hole size and memset all that
             SetMem(Buffer, WasRead, 0);
@@ -58,7 +63,7 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
 
             // Our extent offset is the difference between CurrentSeek and ExtentLogicalBytes
             UINT64 ExtentOffset = CurrentSeek - ExtentLogicalBytes;
-            UINT64 ExtentMayRead = ExtentLengthBytes - ExtentOffset;
+            UINTN ExtentMayRead = (UINTN) (ExtentLengthBytes - ExtentOffset);
             WasRead = ExtentMayRead > RemainingRead ? RemainingRead : ExtentMayRead;
             
             //DEBUG((EFI_D_INFO, "[ext4] may read %lu, remaining %lu\n", ExtentMayRead, RemainingRead));
@@ -74,7 +79,7 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
         }
 
         RemainingRead -= WasRead;
-        Buffer = (void *) ((char *) Buffer + WasRead);
+        Buffer = (VOID *) ((CHAR8 *) Buffer + WasRead);
         BeenRead += WasRead;
         CurrentSeek += WasRead;
     }

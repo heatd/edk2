@@ -1,17 +1,12 @@
 /**
  * @brief Extent related routines
  *
- * @copyright Copyright (c) 2021 Pedro Falcato
+  * Copyright (c) 2021 Pedro Falcato All rights reserved.
+ * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include "Ext4.h"
-#include "Guid/HiiFormMapMethodGuid.h"
-#include "Library/DebugLib.h"
-#include "Library/MemoryAllocationLib.h"
-#include "Library/OrderedCollectionLib.h"
-#include "Uefi/UefiBaseType.h"
-
-#include <Uefi.h>
 
 /**
    Caches a range of extents, by allocating pool memory for each extent and adding it to the tree.
@@ -140,7 +135,7 @@ EFI_STATUS Ext4GetExtent(EXT4_PARTITION *Partition, EXT4_FILE *File, EXT4_BLOCK_
 
     // Note: Right now, holes are the single biggest reason for cache misses
     // We should find a way to get (or cache) holes
-    if ((Ext = Ext4GetExtentFromMap(File, LogicalBlock)) != NULL) {
+    if ((Ext = Ext4GetExtentFromMap(File, (UINT32) LogicalBlock)) != NULL) {
         *Extent = *Ext;
         GetExtentCacheHits++;
 

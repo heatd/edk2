@@ -1,11 +1,11 @@
 /**
  * @file Disk utilities
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 #include "Ext4.h"
-#include <Library/MemoryAllocationLib.h>
 
 EFI_STATUS Ext4ReadDiskIo(EXT4_PARTITION *Partition, void *Buffer, UINTN Length, UINT64 Offset)
 {

@@ -1,8 +1,9 @@
 /**
  * @file Common header for the driver
  * 
- * @copyright Copyright (c) 2021 Pedro Falcato
+ * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * 
+ *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #ifndef _EXT4_H
@@ -117,7 +118,7 @@ static inline UINT64 Ext4BlockToByteOffset(const EXT4_PARTITION *Partition, EXT4
   return Partition->BlockSize * Block;
 }
 
-EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINT64 *Length);
+EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length);
 
 static inline UINT64 Ext4InodeSize(EXT4_INODE *Inode)
 {
@@ -325,13 +326,13 @@ EFI_STATUS Ext4GetFileInfo(IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT U
    @param[in]      File        Pointer to the open directory.
    @param[out]     Buffer      Pointer to the output buffer.
    @param[in]      Offset      Initial directory position.
-   @param[in out] OutLength    Pointer to a UINT64 that contains the length of the buffer,
+   @param[in out] OutLength    Pointer to a UINTN that contains the length of the buffer,
                                and the length of the actual EFI_FILE_INFO after the call. 
 
    @retval EFI_STATUS          Result of the operation
 */
 EFI_STATUS Ext4ReadDir(IN EXT4_PARTITION *Partition, IN EXT4_FILE *File,
-                       OUT VOID *Buffer, IN UINT64 Offset, IN OUT UINT64 *OutLength);
+                       OUT VOID *Buffer, IN UINT64 Offset, IN OUT UINTN *OutLength);
 
 /**
    Initialises the (empty) extents map, that will work as a cache of extents.
