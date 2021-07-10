@@ -1,9 +1,9 @@
 /**
- * @brief Block group related routines
+ * @file Block group related routines
  *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
  * Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
- * 
+ *
  *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
@@ -17,7 +17,7 @@ EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_I
                                                 &InodeOffset);
 
   EXT4_INODE *Inode = AllocatePool(Partition->InodeSize);
-  if (!Inode) {
+  if (Inode == NULL) {
       return EFI_OUT_OF_RESOURCES;
   }
 
@@ -27,7 +27,7 @@ EFI_STATUS Ext4ReadInode(EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_I
 
   EXT4_BLOCK_NR InodeTableStart = Ext4MakeBlockNumberFromHalfs(Partition, BlockGroup->bg_inode_table_lo,
                                                                BlockGroup->bg_inode_table_hi);
-    
+
   EFI_STATUS st = Ext4ReadDiskIo(Partition, Inode, Partition->InodeSize,
                    Ext4BlockToByteOffset(Partition, InodeTableStart) + InodeOffset * Partition->InodeSize);
   if (EFI_ERROR(st)) {

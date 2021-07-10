@@ -14,41 +14,41 @@ Ext4OpenPartition (
   EFI_DISK_IO2_PROTOCOL *diskIo2, EFI_BLOCK_IO_PROTOCOL *blockIo
   )
 {
-  EXT4_PARTITION  *part = AllocateZeroPool (sizeof (*part));
+  EXT4_PARTITION  *Part = AllocateZeroPool (sizeof (*Part));
 
-  if(!part) {
+  if(Part == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  part->BlockIo = blockIo;
-  part->DiskIo  = diskIo;
-  part->DiskIo2 = diskIo2;
+  Part->BlockIo = blockIo;
+  Part->DiskIo  = diskIo;
+  Part->DiskIo2 = diskIo2;
 
-  EFI_STATUS  st = Ext4OpenSuperblock (part);
+  EFI_STATUS  st = Ext4OpenSuperblock (Part);
 
   if(EFI_ERROR (st)) {
-    FreePool (part);
+    FreePool (Part);
     return st;
   }
 
-  part->Interface.Revision   = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION;
-  part->Interface.OpenVolume = Ext4OpenVolume;
+  Part->Interface.Revision   = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION;
+  Part->Interface.OpenVolume = Ext4OpenVolume;
   st = gBS->InstallMultipleProtocolInterfaces (
               &DeviceHandle,
               &gEfiSimpleFileSystemProtocolGuid,
-              &part->Interface,
+              &Part->Interface,
               NULL
               );
 
   if(EFI_ERROR (st)) {
-    FreePool (part);
+    FreePool (Part);
     return st;
   }
 
   return EFI_SUCCESS;
 }
 
-void
+VOID
 Ext4SetupFile (
   IN OUT EXT4_FILE *File, EXT4_PARTITION *Partition
   )

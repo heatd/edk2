@@ -1,5 +1,5 @@
 /**
- * @brief Directory related routines
+ * @file Directory related routines
  *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
  *
@@ -45,14 +45,14 @@ Ext4GetUcs2DirentName (
 */
 EFI_STATUS
 Ext4RetrieveDirent (
-  EXT4_FILE *File, const CHAR16 *Name, EXT4_PARTITION *Partition,
+  EXT4_FILE *File, CONST CHAR16 *Name, EXT4_PARTITION *Partition,
   EXT4_DIR_ENTRY *res
   )
 {
   EFI_STATUS  st   = EFI_NOT_FOUND;
-  CHAR8       *buf = AllocatePages (1);
+  CHAR8       *Buf = AllocatePool (Partition->BlockSize);
 
-  if(!buf) {
+  if(Buf == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -72,23 +72,23 @@ Ext4RetrieveDirent (
   while(off < DirInoSize) {
     UINTN  Length = Partition->BlockSize;
 
-    st = Ext4Read (Partition, File, buf, off, &Length);
+    st = Ext4Read (Partition, File, Buf, off, &Length);
 
     if (st != EFI_SUCCESS) {
-      FreePages (buf, 1);
+      FreePages (Buf, 1);
       return st;
     }
 
-    for(CHAR8 *b = buf; b < buf + Partition->BlockSize; ) {
+    for(CHAR8 *b = Buf; b < Buf + Partition->BlockSize; ) {
       EXT4_DIR_ENTRY  *entry = (EXT4_DIR_ENTRY *)b;
       ASSERT (entry->size != 0);
 
-      UINTN  RemainingBlock = Partition->BlockSize - (b - buf);
+      UINTN  RemainingBlock = Partition->BlockSize - (b - Buf);
 
       if(entry->lsbit_namelen > RemainingBlock || entry->size > RemainingBlock) {
         // Corrupted filesystem
         // TODO: Do the proper ext4 corruption detection thing and dirty the filesystem.
-        FreePages (buf, 1);
+        FreePages (Buf, 1);
         return EFI_VOLUME_CORRUPTED;
       }
 
@@ -128,7 +128,7 @@ Ext4RetrieveDirent (
           !Ext4StrCmpInsensitive (Ucs2FileName, (CHAR16 *)Name)) {
         UINTN  ToCopy = entry->size > sizeof (EXT4_DIR_ENTRY) ? sizeof (EXT4_DIR_ENTRY) : entry->size;
         CopyMem (res, entry, ToCopy);
-        FreePages (buf, 1);
+        FreePages (Buf, 1);
         return EFI_SUCCESS;
       }
 
@@ -138,7 +138,7 @@ Ext4RetrieveDirent (
     off += Partition->BlockSize;
   }
 
-  FreePages (buf, 1);
+  FreePages (Buf, 1);
   return EFI_NOT_FOUND;
 }
 
@@ -161,7 +161,7 @@ Ext4OpenDirent (
   EFI_STATUS  st;
   EXT4_FILE   *File = AllocateZeroPool (sizeof (EXT4_FILE));
 
-  if (!File) {
+  if (File == NULL) {
     st = EFI_OUT_OF_RESOURCES;
     goto Error;
   }
@@ -205,12 +205,12 @@ Ext4OpenDirent (
   return EFI_SUCCESS;
 
 Error:
-  if (File) {
-    if (File->FileName) {
+  if (File != NULL) {
+    if (File->FileName != NULL) {
       FreePool (File->FileName);
     }
 
-    if (File->ExtentsMap) {
+    if (File->ExtentsMap != NULL) {
       OrderedCollectionUninit (File->ExtentsMap);
     }
 
@@ -233,7 +233,7 @@ Error:
 */
 EFI_STATUS
 Ext4OpenFile (
-  EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
+  EXT4_FILE *Directory, CONST CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
   OUT EXT4_FILE **OutFile
   )
 {

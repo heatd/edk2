@@ -320,7 +320,7 @@ typedef struct {
   UINT16    size;
   UINT8     lsbit_namelen;
   UINT8     type_indic;
-  char      name[255];
+  CHAR8      name[255];
 } EXT4_DIR_ENTRY;
 
 #define EXT4_MIN_DIR_ENTRY_LEN  8

@@ -1,5 +1,5 @@
 /**
- * @brief Extent related routines
+ * @file Extent related routines
  *
   * Copyright (c) 2021 Pedro Falcato All rights reserved.
  *
@@ -17,7 +17,7 @@
 
    @retval none
 */
-void
+VOID
 Ext4CacheExtents (
   IN EXT4_FILE *File, IN CONST EXT4_EXTENT *Extents, IN UINT16 NumberExtents
   );
@@ -35,7 +35,8 @@ Ext4GetExtentFromMap (
   IN EXT4_FILE *File, UINT32 Block
   );
 
-static EXT4_EXTENT_HEADER *
+STATIC
+EXT4_EXTENT_HEADER *
 Ext4GetInoExtentHeader (
   EXT4_INODE *Inode
   )
@@ -43,7 +44,8 @@ Ext4GetInoExtentHeader (
   return (EXT4_EXTENT_HEADER *)Inode->i_data;
 }
 
-static BOOLEAN
+STATIC
+BOOLEAN
 Ext4ExtentHeaderValid (
   EXT4_EXTENT_HEADER *Header
   )
@@ -71,7 +73,8 @@ Ext4ExtentHeaderValid (
   return TRUE;
 }
 
-static EXT4_EXTENT_INDEX *
+STATIC
+EXT4_EXTENT_INDEX *
 Ext4BinsearchExtentIndex (
   EXT4_EXTENT_HEADER *Header, EXT4_BLOCK_NR LogicalBlock
   )
@@ -96,7 +99,8 @@ Ext4BinsearchExtentIndex (
   return l - 1;
 }
 
-static EXT4_EXTENT *
+STATIC
+EXT4_EXTENT *
 Ext4BinsearchExtentExt (
   EXT4_EXTENT_HEADER *Header, EXT4_BLOCK_NR LogicalBlock
   )
@@ -134,8 +138,8 @@ Ext4ExtentIdxLeafBlock (
   return ((UINT64)Index->ei_leaf_hi << 32) | Index->ei_leaf_lo;
 }
 
-static UINTN  GetExtentRequests  = 0;
-static UINTN  GetExtentCacheHits = 0;
+STATIC UINTN  GetExtentRequests  = 0;
+STATIC UINTN  GetExtentCacheHits = 0;
 
 EFI_STATUS
 Ext4GetExtent (
@@ -145,7 +149,7 @@ Ext4GetExtent (
   EXT4_INODE  *Inode = File->Inode;
 
   DEBUG ((EFI_D_INFO, "[ext4] Looking up extent for block %lu\n", LogicalBlock));
-  void         *Buffer = NULL;
+  VOID         *Buffer = NULL;
   EXT4_EXTENT  *Ext    = NULL;
 
   // ext4 does not have support for logical block numbers bigger than UINT32_MAX
@@ -191,9 +195,9 @@ Ext4GetExtent (
 
     EXT4_EXTENT_INDEX  *Index = Ext4BinsearchExtentIndex (ExtHeader, LogicalBlock);
 
-    if(!Buffer) {
+    if(Buffer == NULL) {
       Buffer = AllocatePool (Partition->BlockSize);
-      if(!Buffer) {
+      if(Buffer == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
 
@@ -222,7 +226,7 @@ Ext4GetExtent (
   Ext = Ext4BinsearchExtentExt (ExtHeader, LogicalBlock);
 
   if(!Ext) {
-    if(Buffer) {
+    if(Buffer != NULL) {
       FreePool (Buffer);
     }
 
@@ -231,7 +235,7 @@ Ext4GetExtent (
 
   if(!(LogicalBlock >= Ext->ee_block && Ext->ee_block + Ext->ee_len > LogicalBlock)) {
     // This extent does not cover the block
-    if(Buffer) {
+    if(Buffer != NULL) {
       FreePool (Buffer);
     }
 
@@ -240,14 +244,15 @@ Ext4GetExtent (
 
   *Extent = *Ext;
 
-  if(Buffer) {
+  if(Buffer != NULL) {
     FreePool (Buffer);
   }
 
   return EFI_SUCCESS;
 }
 
-static INTN EFIAPI
+STATIC
+INTN EFIAPI
 Ext4ExtentsMapStructCompare (
   IN CONST VOID *UserStruct1,
   IN CONST VOID *UserStruct2
@@ -264,7 +269,8 @@ Ext4ExtentsMapStructCompare (
          Extent1->ee_block > Extent2->ee_block ? 1 : 0;
 }
 
-static INTN EFIAPI
+STATIC
+INTN EFIAPI
 Ext4ExtentsMapKeyCompare (
   IN CONST VOID *StandaloneKey,
   IN CONST VOID *UserStruct
@@ -312,7 +318,7 @@ Ext4InitExtentsMap (
 
    @retval none
 */
-void
+VOID
 Ext4FreeExtentsMap (
   IN EXT4_FILE *File
   )
@@ -324,7 +330,7 @@ Ext4FreeExtentsMap (
 
   while ((MinEntry = OrderedCollectionMin (File->ExtentsMap)) != NULL) {
     EXT4_EXTENT  *Ext;
-    OrderedCollectionDelete (File->ExtentsMap, MinEntry, (void **)&Ext);
+    OrderedCollectionDelete (File->ExtentsMap, MinEntry, (VOID **)&Ext);
     FreePool (Ext);
   }
 
@@ -343,7 +349,7 @@ Ext4FreeExtentsMap (
 
    @retval none
 */
-void
+VOID
 Ext4CacheExtents (
   IN EXT4_FILE *File, IN CONST EXT4_EXTENT *Extents, IN UINT16 NumberExtents
   )
@@ -355,7 +361,7 @@ Ext4CacheExtents (
   for(UINT16 i = 0; i < NumberExtents; i++, Extents++) {
     EXT4_EXTENT  *Extent = AllocatePool (sizeof (EXT4_EXTENT));
 
-    if (!Extent) {
+    if (Extent == NULL) {
       return;
     }
 
@@ -399,7 +405,7 @@ Ext4GetExtentFromMap (
 {
   ORDERED_COLLECTION_ENTRY  *Entry = OrderedCollectionFind (File->ExtentsMap, (CONST VOID *)(UINTN)Block);
 
-  if (!Entry) {
+  if (Entry == NULL) {
     return NULL;
   }
 

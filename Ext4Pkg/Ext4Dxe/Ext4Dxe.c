@@ -196,16 +196,18 @@ Ext4Bind (
   IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL
   )
 {
-  EFI_DISK_IO_PROTOCOL   *diskIo;
-  EFI_DISK_IO2_PROTOCOL  *diskIo2 = NULL;
+  EFI_DISK_IO_PROTOCOL   *DiskIo;
+  EFI_DISK_IO2_PROTOCOL  *DiskIo2;
   EFI_BLOCK_IO_PROTOCOL  *blockIo;
+
+  DiskIo2 = NULL;
 
   DEBUG ((EFI_D_INFO, "[Ext4] Binding to controller\n"));
 
   EFI_STATUS  st = gBS->OpenProtocol (
                           ControllerHandle,
                           &gEfiDiskIoProtocolGuid,
-                          (VOID **)&diskIo,
+                          (VOID **)&DiskIo,
                           BindingProtocol->ImageHandle,
                           ControllerHandle,
                           EFI_OPEN_PROTOCOL_BY_DRIVER
@@ -220,14 +222,14 @@ Ext4Bind (
   st = gBS->OpenProtocol (
               ControllerHandle,
               &gEfiDiskIo2ProtocolGuid,
-              (VOID **)&diskIo2,
+              (VOID **)&DiskIo2,
               BindingProtocol->ImageHandle,
               ControllerHandle,
               EFI_OPEN_PROTOCOL_BY_DRIVER
               );
   // It's okay to not support DISK_IO2
 
-  if(diskIo2) {
+  if(DiskIo2 != NULL) {
     DEBUG ((EFI_D_INFO, "[Ext4] Controller supports DISK_IO2\n"));
   }
 
@@ -246,7 +248,7 @@ Ext4Bind (
 
   DEBUG ((EFI_D_INFO, "Opening partition\n"));
 
-  st = Ext4OpenPartition (ControllerHandle, diskIo, diskIo2, blockIo);
+  st = Ext4OpenPartition (ControllerHandle, DiskIo, DiskIo2, blockIo);
 
   if(!EFI_ERROR (st)) {
     return st;
@@ -255,7 +257,7 @@ Ext4Bind (
   DEBUG ((EFI_D_INFO, "[ext4] Error mounting %x\n", st));
 
 error:
-  if(diskIo) {
+  if(DiskIo) {
     gBS->CloseProtocol (
            ControllerHandle,
            &gEfiDiskIoProtocolGuid,
@@ -264,7 +266,7 @@ error:
            );
   }
 
-  if(diskIo2) {
+  if(DiskIo2) {
     gBS->CloseProtocol (
            ControllerHandle,
            &gEfiDiskIo2ProtocolGuid,

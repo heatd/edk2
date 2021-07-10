@@ -11,18 +11,20 @@
 #include <Guid/FileInfo.h>
 #include <Guid/FileSystemInfo.h>
 
-static EXT4_FILE *
+STATIC
+EXT4_FILE *
 Ext4DuplicateFile (
   IN CONST EXT4_FILE *Original
   );
 
-static EFI_STATUS
+STATIC
+EFI_STATUS
 GetPathSegment (
-  IN const CHAR16 *Path, OUT CHAR16 *PathSegment, OUT UINTN *Length
+  IN CONST CHAR16 *Path, OUT CHAR16 *PathSegment, OUT UINTN *Length
   )
 {
-  const CHAR16  *Start = Path;
-  const CHAR16  *End   = Path;
+  CONST CHAR16  *Start = Path;
+  CONST CHAR16  *End   = Path;
 
   // The path segment ends on a backslash or a null terminator
   for( ; *End != L'\0' && *End != L'\\'; End++) {
@@ -43,11 +45,11 @@ Ext4ApplyPermissions (
 {
   UINT16  NeededPerms = 0;
 
-  if(OpenMode & EFI_FILE_MODE_READ) {
+  if((OpenMode & EFI_FILE_MODE_READ) != 0) {
     NeededPerms |= EXT4_INO_PERM_READ_OWNER;
   }
 
-  if(OpenMode & EFI_FILE_MODE_WRITE) {
+  if((OpenMode & EFI_FILE_MODE_WRITE) != 0) {
     NeededPerms |= EXT4_INO_PERM_WRITE_OWNER;
   }
 
@@ -142,7 +144,7 @@ Ext4Open (
   if (Level == 0) {
     // We opened the base directory again, so we need to duplicate the file structure
     Current = Ext4DuplicateFile (Current);
-    if (!Current) {
+    if (Current == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
   }
@@ -331,7 +333,8 @@ Ext4GetFileInfo (
   return StrCpyS (Info->FileName, FileNameLen + 1, File->FileName);
 }
 
-static EFI_STATUS
+STATIC
+EFI_STATUS
 Ext4GetFilesystemInfo (
   IN EXT4_PARTITION *Part, OUT EFI_FILE_SYSTEM_INFO *Info, IN OUT UINTN *BufferSize
   )
@@ -343,7 +346,7 @@ Ext4GetFilesystemInfo (
   // s_volume_name is only valid on dynamic revision; old filesystems don't support this
   if(Part->SuperBlock.s_rev_level == EXT4_DYNAMIC_REV) {
     EFI_STATUS  st = AsciiStrnToUnicodeStrS (
-                       (const CHAR8 *)Part->SuperBlock.s_volume_name,
+                       (CONST CHAR8 *)Part->SuperBlock.s_volume_name,
                        16,
                        VolumeName,
                        sizeof (VolumeName),
@@ -402,7 +405,8 @@ Ext4GetInfo (
   return EFI_UNSUPPORTED;
 }
 
-static EXT4_FILE *
+STATIC
+EXT4_FILE *
 Ext4DuplicateFile (
   IN CONST EXT4_FILE *Original
   )
@@ -410,12 +414,12 @@ Ext4DuplicateFile (
   EXT4_PARTITION  *Partition = Original->Partition;
   EXT4_FILE       *File = AllocateZeroPool (sizeof (EXT4_FILE));
 
-  if (!File) {
+  if (File == NULL) {
     return NULL;
   }
 
   File->Inode = AllocateZeroPool (Partition->InodeSize);
-  if (!File->Inode) {
+  if (File->Inode == NULL) {
     FreePool (File);
     return NULL;
   }
@@ -423,7 +427,7 @@ Ext4DuplicateFile (
   CopyMem (File->Inode, Original->Inode, Partition->InodeSize);
 
   File->FileName = AllocateZeroPool (StrSize (Original->FileName));
-  if (!File->FileName) {
+  if (File->FileName == NULL) {
     FreePool (File->Inode);
     FreePool (File);
     return NULL;

@@ -1,8 +1,8 @@
 /**
  * @file Unicode collation routines
- * 
+ *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
- * 
+ *
  *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
@@ -14,14 +14,15 @@
 
 #include <Protocol/UnicodeCollation.h>
 
-static EFI_UNICODE_COLLATION_PROTOCOL *UnicodeCollationInterface = NULL;
+STATIC EFI_UNICODE_COLLATION_PROTOCOL *UnicodeCollationInterface = NULL;
 
 /*
  * Note: This code is heavily based on FatPkg's Unicode collation, since they seem to know what
  * they're doing.
  * PS: Maybe all this code could be put in a library? It looks heavily shareable.
  */
-static EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
+STATIC
+EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
   IN EFI_HANDLE         DriverHandle,
   IN EFI_GUID           *ProtocolGuid,
   IN CONST CHAR16       *VariableName,
@@ -55,11 +56,11 @@ static EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
   {
     st = gBS->OpenProtocol(Handles[i],
                            ProtocolGuid,
-                           (void **) &Uci,
+                           (VOID **) &Uci,
                            DriverHandle,
                            NULL,
                            EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-    
+
     if(EFI_ERROR(st)) {
       continue;
     }
@@ -90,13 +91,14 @@ static EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
 /**
    Initialises Unicode collation, which is needed for case-insensitive string comparisons
    within the driver (a good example of an application of this is filename comparison).
- 
+
    @param[in]      DriverHandle    Handle to the driver image.
- 
+
    @retval EFI_SUCCESS   Unicode collation was successfully initialised.
    @retval !EFI_SUCCESS  Failure.
 */
-EFI_STATUS Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
+EFI_STATUS
+Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
 {
   EFI_STATUS Status;
 
@@ -130,15 +132,16 @@ EFI_STATUS Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
 /**
    Does a case-insensitive string comparison. Refer to EFI_UNICODE_COLLATION_PROTOCOL's StriColl
    for more details.
- 
+
    @param[in]      Str1   Pointer to a null terminated string.
    @param[in]      Str2   Pointer to a null terminated string.
- 
+
    @retval 0   Str1 is equivalent to Str2.
    @retval >0  Str1 is lexically greater than Str2.
    @retval <0  Str1 is lexically less than Str2.
 */
-INTN Ext4StrCmpInsensitive(
+INTN
+Ext4StrCmpInsensitive(
   IN CHAR16                                 *Str1,
   IN CHAR16                                 *Str2
   )

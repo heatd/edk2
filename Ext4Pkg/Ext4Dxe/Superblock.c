@@ -8,14 +8,14 @@
 
 #include "Ext4.h"
 
-static const UINT32  supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
+STATIC CONST UINT32  supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
 
-static const UINT32  supported_ro_compat_feat =
+STATIC CONST UINT32  supported_ro_compat_feat =
   EXT4_FEATURE_RO_COMPAT_DIR_NLINK | EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE |
   EXT4_FEATURE_RO_COMPAT_HUGE_FILE | EXT4_FEATURE_RO_COMPAT_LARGE_FILE |
   EXT4_FEATURE_RO_COMPAT_GDT_CSUM | EXT4_FEATURE_RO_COMPAT_METADATA_CSUM | EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER;
 // TODO: Add btree support
-static const UINT32  supported_incompat_feat =
+STATIC CONST UINT32  supported_incompat_feat =
   EXT4_FEATURE_INCOMPAT_64BIT | EXT4_FEATURE_INCOMPAT_DIRDATA |
   EXT4_FEATURE_INCOMPAT_FLEX_BG | EXT4_FEATURE_INCOMPAT_FILETYPE |
   EXT4_FEATURE_INCOMPAT_EXTENTS | EXT4_FEATURE_INCOMPAT_LARGEDIR |
@@ -135,7 +135,7 @@ Ext4OpenSuperblock (
     Partition->ReadOnly = TRUE;
   }
 
-  (void)supported_compat_feat;
+  (VOID)supported_compat_feat;
 
   DEBUG ((EFI_D_INFO, "Read only = %u\n", Partition->ReadOnly));
 

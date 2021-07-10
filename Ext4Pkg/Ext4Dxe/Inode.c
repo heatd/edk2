@@ -1,5 +1,5 @@
 /**
- * @brief Inode related routines
+ * @file Inode related routines
  *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
  *
@@ -13,7 +13,7 @@
 
 EFI_STATUS
 Ext4Read (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UINT64 Offset, IN OUT UINTN *Length
+  EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length
   )
 {
   // DEBUG((EFI_D_INFO, "Ext4Read[Offset %lu, Length %lu]\n", Offset, *Length));
@@ -107,7 +107,7 @@ Ext4AllocateInode (
 
 BOOLEAN
 Ext4FileIsDir (
-  IN const EXT4_FILE *File
+  IN CONST EXT4_FILE *File
   )
 {
   return (File->Inode->i_mode & EXT4_INO_TYPE_DIR) == EXT4_INO_TYPE_DIR;
@@ -115,7 +115,7 @@ Ext4FileIsDir (
 
 BOOLEAN
 Ext4FileIsReg (
-  IN const EXT4_FILE *File
+  IN CONST EXT4_FILE *File
   )
 {
   return (File->Inode->i_mode & EXT4_INO_TYPE_REGFILE) == EXT4_INO_TYPE_REGFILE;
@@ -146,7 +146,8 @@ Ext4FilePhysicalSpace (
 #define EXT4_EXTRA_TIMESTAMP_MASK  ((1 << 2) - 1)
 
 #define EXT4_FILE_GET_TIME_GENERIC(Name, Field)            \
-  void Ext4File ## Name (IN EXT4_FILE *File, OUT EFI_TIME *Time) \
+  VOID \
+  Ext4File ## Name (IN EXT4_FILE *File, OUT EFI_TIME *Time) \
   {                                                          \
     EXT4_INODE  *Inode = File->Inode;                       \
     UINT64      SecondsEpoch = Inode->Field;                   \
@@ -165,9 +166,10 @@ Ext4FilePhysicalSpace (
 
 EXT4_FILE_GET_TIME_GENERIC (ATime, i_atime);
 EXT4_FILE_GET_TIME_GENERIC (MTime, i_mtime);
-static EXT4_FILE_GET_TIME_GENERIC (CrTime, i_crtime);
+STATIC
+EXT4_FILE_GET_TIME_GENERIC (CrTime, i_crtime);
 
-void
+VOID
 Ext4FileCreateTime (
   IN EXT4_FILE *File, OUT EFI_TIME *Time
   )

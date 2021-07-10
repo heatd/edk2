@@ -73,7 +73,8 @@ Ext4OpenSuperblock (
   EXT4_PARTITION *Partition
   );
 
-static inline EFI_BLOCK_IO_PROTOCOL *
+STATIC inline
+EFI_BLOCK_IO_PROTOCOL *
 Ext4BlockIo (
   EXT4_PARTITION *Partition
   )
@@ -81,7 +82,8 @@ Ext4BlockIo (
   return Partition->BlockIo;
 }
 
-static inline EFI_DISK_IO_PROTOCOL *
+STATIC inline
+EFI_DISK_IO_PROTOCOL *
 Ext4DiskIo (
   EXT4_PARTITION *Partition
   )
@@ -89,7 +91,8 @@ Ext4DiskIo (
   return Partition->DiskIo;
 }
 
-static inline EFI_DISK_IO2_PROTOCOL *
+STATIC inline
+EFI_DISK_IO2_PROTOCOL *
 Ext4DiskIo2 (
   EXT4_PARTITION *Partition
   )
@@ -97,7 +100,8 @@ Ext4DiskIo2 (
   return Partition->DiskIo2;
 }
 
-static inline UINT32
+STATIC inline
+UINT32
 Ext4MediaId (
   EXT4_PARTITION *Partition
   )
@@ -120,24 +124,27 @@ Ext4AllocAndReadBlocks (
   EXT4_PARTITION *Partition, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber
   );
 
-static inline BOOLEAN
+STATIC inline
+BOOLEAN
 Ext4Is64Bit (
-  const EXT4_PARTITION *Partition
+  CONST EXT4_PARTITION *Partition
   )
 {
   return Partition->FeaturesIncompat & EXT4_FEATURE_INCOMPAT_64BIT;
 }
 
-static inline EXT4_BLOCK_NR
+STATIC inline
+EXT4_BLOCK_NR
 Ext4MakeBlockNumberFromHalfs (
-  const EXT4_PARTITION *Partition, UINT32 Low, UINT32 High
+  CONST EXT4_PARTITION *Partition, UINT32 Low, UINT32 High
   )
 {
   // High might have garbage if it's not a 64 bit filesystem
   return Ext4Is64Bit (Partition) ? Low | ((UINT64)High << 32) : Low;
 }
 
-static inline EXT4_BLOCK_GROUP_DESC *
+STATIC inline
+EXT4_BLOCK_GROUP_DESC *
 Ext4GetBlockGroupDesc (
   EXT4_PARTITION *Partition, UINT32 BlockGroup
   )
@@ -150,9 +157,10 @@ Ext4ReadInode (
   EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_INODE **OutIno
   );
 
-static inline UINT64
+STATIC inline
+UINT64
 Ext4BlockToByteOffset (
-  const EXT4_PARTITION *Partition, EXT4_BLOCK_NR Block
+  CONST EXT4_PARTITION *Partition, EXT4_BLOCK_NR Block
   )
 {
   return Partition->BlockSize * Block;
@@ -163,7 +171,8 @@ Ext4Read (
   EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length
   );
 
-static inline UINT64
+STATIC inline
+UINT64
 Ext4InodeSize (
   EXT4_INODE *Inode
   )
@@ -202,7 +211,7 @@ struct _Ext4File {
 */
 EFI_STATUS
 Ext4RetrieveDirent (
-  EXT4_FILE *Directory, const CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
+  EXT4_FILE *Directory, CONST CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
   OUT EXT4_DIR_ENTRY *Result
   );
 
@@ -219,7 +228,7 @@ Ext4RetrieveDirent (
 */
 EFI_STATUS
 Ext4OpenFile (
-  EXT4_FILE *Directory, const CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
+  EXT4_FILE *Directory, CONST CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
   OUT EXT4_FILE **OutFile
   );
 
@@ -251,7 +260,7 @@ Ext4OpenVolume (
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI_FILE_PROTOCOL **Root
   );
 
-void
+VOID
 Ext4SetupFile (
   IN OUT EXT4_FILE *File, IN EXT4_PARTITION *Partition
   );
@@ -325,19 +334,20 @@ Ext4GetInfo (
 
 BOOLEAN
 Ext4FileIsDir (
-  IN const EXT4_FILE *File
+  IN CONST EXT4_FILE *File
   );
 
 BOOLEAN
 Ext4FileIsReg (
-  IN const EXT4_FILE *File
+  IN CONST EXT4_FILE *File
   );
 
 // In EFI we can't open FIFO pipes, UNIX sockets, character/block devices since these concepts are
 // at the kernel level and are OS dependent.
-static inline BOOLEAN
+STATIC inline
+BOOLEAN
 Ext4FileIsOpenable (
-  IN const EXT4_FILE *File
+  IN CONST EXT4_FILE *File
   )
 {
   return Ext4FileIsReg (File) || Ext4FileIsDir (File);
@@ -352,17 +362,17 @@ Ext4FilePhysicalSpace (
   EXT4_FILE *File
   );
 
-void
+VOID
 Ext4FileATime (
   IN EXT4_FILE *File, OUT EFI_TIME *Time
   );
 
-void
+VOID
 Ext4FileMTime (
   IN EXT4_FILE *File, OUT EFI_TIME *Time
   );
 
-void
+VOID
 Ext4FileCreateTime (
   IN EXT4_FILE *File, OUT EFI_TIME *Time
   );
@@ -463,7 +473,7 @@ Ext4InitExtentsMap (
 
    @retval none
 */
-void
+VOID
 Ext4FreeExtentsMap (
   IN EXT4_FILE *File
   );

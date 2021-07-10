@@ -9,7 +9,7 @@
 
 EFI_STATUS
 Ext4ReadDiskIo (
-  EXT4_PARTITION *Partition, void *Buffer, UINTN Length, UINT64 Offset
+  EXT4_PARTITION *Partition, VOID *Buffer, UINTN Length, UINT64 Offset
   )
 {
   return Ext4DiskIo (Partition)->ReadDisk (Ext4DiskIo (Partition), Ext4MediaId (Partition), Offset, Length, Buffer);
@@ -17,20 +17,20 @@ Ext4ReadDiskIo (
 
 EFI_STATUS
 Ext4ReadBlocks (
-  EXT4_PARTITION *Partition, void *Buffer, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber
+  EXT4_PARTITION *Partition, VOID *Buffer, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber
   )
 {
   return Ext4ReadDiskIo (Partition, Buffer, NumberBlocks * Partition->BlockSize, BlockNumber * Partition->BlockSize);
 }
 
-void *
+VOID *
 Ext4AllocAndReadBlocks (
   EXT4_PARTITION *Partition, UINTN NumberBlocks, EXT4_BLOCK_NR BlockNumber
   )
 {
-  void  *Buf = AllocatePool (NumberBlocks * Partition->BlockSize);
+  VOID  *Buf = AllocatePool (NumberBlocks * Partition->BlockSize);
 
-  if(!Buf) {
+  if(Buf == NULL) {
     return NULL;
   }
 
