@@ -10,6 +10,6 @@
 #
 ##
 
-#string STR_PACKAGE_ABSTRACT            #language en-US "Module implementations for the EXT4 file system"
+#string STR_MODULE_ABSTRACT            #language en-US "UEFI driver for the EXT4 file system."
 
-#string STR_PACKAGE_DESCRIPTION         #language en-US "This package contains UEFI drivers and libraries for the EXT4 file system."
+#string STR_MODULE_DESCRIPTION         #language en-US "Produces the EFI Simple File System protocol."
