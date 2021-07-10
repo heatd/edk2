@@ -26,7 +26,7 @@ EFI_STATUS Ext4Read(EXT4_PARTITION *Partition, EXT4_FILE *File, void *Buffer, UI
 
     if (RemainingRead > InodeSize - Offset)
     {
-        RemainingRead = InodeSize - Offset;
+        RemainingRead = (UINTN) (InodeSize - Offset);
     }
 
     while(RemainingRead != 0)
@@ -136,9 +136,12 @@ void Ext4File##Name(IN EXT4_FILE *File, OUT EFI_TIME *Time) \
         SecondsEpoch |= ((UINT64) (Inode->Field##_extra & EXT4_EXTRA_TIMESTAMP_MASK)) << 32; \
         Nanoseconds = Inode->Field##_extra >> 2;                                            \
     }                                                                                       \
-    EpochToEfiTime(SecondsEpoch, Time);                                                     \
+    EpochToEfiTime((UINTN) SecondsEpoch, Time);                                                     \
     Time->Nanosecond = Nanoseconds;                                                         \
 }
+
+// Note: EpochToEfiTime should be adjusted to take in a UINT64 instead of a UINTN, in order to avoid Y2038
+// on 32-bit systems.
 
 EXT4_FILE_GET_TIME_GENERIC(ATime, i_atime);
 EXT4_FILE_GET_TIME_GENERIC(MTime, i_mtime);

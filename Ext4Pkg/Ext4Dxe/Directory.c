@@ -346,7 +346,9 @@ EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer,
             goto Out;
         }
 
+#if 0
         DEBUG((EFI_D_INFO, "[ext4] Length read %lu, offset %lu\n", Len, Offset));
+#endif
 
         if (Len == 0) {
             *OutLength = 0;
@@ -361,7 +363,7 @@ EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer,
 
         // Invalid directory entry length
         if (!Ext4ValidDirent(&Entry)) {
-            DEBUG((EFI_D_INFO, "Invalid dirent\n"));
+            DEBUG((EFI_D_ERROR, "[ext4] Invalid dirent at offset %lu\n", Offset));
             st = EFI_VOLUME_CORRUPTED;
             goto Out;
         }
@@ -391,7 +393,9 @@ EFI_STATUS Ext4ReadDir(EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer,
             continue;
         }
 
+#if 0
         DEBUG((EFI_D_INFO, "[ext4] Listing file %s\n", TempFile->FileName));
+#endif
 
         st = Ext4GetFileInfo(TempFile, Buffer, OutLength);
         if (!EFI_ERROR(st)) {
