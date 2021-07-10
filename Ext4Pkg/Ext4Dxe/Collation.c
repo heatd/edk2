@@ -14,7 +14,7 @@
 
 #include <Protocol/UnicodeCollation.h>
 
-STATIC EFI_UNICODE_COLLATION_PROTOCOL *UnicodeCollationInterface = NULL;
+STATIC EFI_UNICODE_COLLATION_PROTOCOL  *UnicodeCollationInterface = NULL;
 
 /*
  * Note: This code is heavily based on FatPkg's Unicode collation, since they seem to know what
@@ -22,58 +22,61 @@ STATIC EFI_UNICODE_COLLATION_PROTOCOL *UnicodeCollationInterface = NULL;
  * PS: Maybe all this code could be put in a library? It looks heavily shareable.
  */
 STATIC
-EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
+EFI_STATUS
+Ext4InitialiseUnicodeCollationInternal (
   IN EFI_HANDLE         DriverHandle,
   IN EFI_GUID           *ProtocolGuid,
   IN CONST CHAR16       *VariableName,
   IN CONST CHAR8        *DefaultLanguage
   )
 {
-  UINTN NumHandles;
-  EFI_HANDLE *Handles;
-  EFI_UNICODE_COLLATION_PROTOCOL *Uci;
-  BOOLEAN Iso639Language = (BOOLEAN) (ProtocolGuid == &gEfiUnicodeCollationProtocolGuid);
-  CHAR8 *Language;
-  EFI_STATUS RetStatus = EFI_UNSUPPORTED;
+  UINTN                           NumHandles;
+  EFI_HANDLE                      *Handles;
+  EFI_UNICODE_COLLATION_PROTOCOL  *Uci;
+  BOOLEAN                         Iso639Language = (BOOLEAN)(ProtocolGuid == &gEfiUnicodeCollationProtocolGuid);
+  CHAR8                           *Language;
+  EFI_STATUS                      RetStatus = EFI_UNSUPPORTED;
 
-  GetEfiGlobalVariable2 (VariableName, (VOID**) &Language, NULL);
+  GetEfiGlobalVariable2 (VariableName, (VOID **)&Language, NULL);
 
-  EFI_STATUS st;
+  EFI_STATUS  st;
+
   st = gBS->LocateHandleBuffer (
-                ByProtocol,
-                ProtocolGuid,
-                NULL,
-                &NumHandles,
-                &Handles
-                );
+              ByProtocol,
+              ProtocolGuid,
+              NULL,
+              &NumHandles,
+              &Handles
+              );
   if (EFI_ERROR (st)) {
     return st;
   }
 
   // Note: FatPkg also doesn't close unneeded protocols.
   // This looks like a leak but I'm likely wrong.
-  for(UINTN i = 0; i < NumHandles; i++)
-  {
-    st = gBS->OpenProtocol(Handles[i],
-                           ProtocolGuid,
-                           (VOID **) &Uci,
-                           DriverHandle,
-                           NULL,
-                           EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+  for(UINTN i = 0; i < NumHandles; i++) {
+    st = gBS->OpenProtocol (
+                Handles[i],
+                ProtocolGuid,
+                (VOID **)&Uci,
+                DriverHandle,
+                NULL,
+                EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                );
 
-    if(EFI_ERROR(st)) {
+    if(EFI_ERROR (st)) {
       continue;
     }
 
-    CHAR8 *BestLanguage = GetBestLanguage (
-                     Uci->SupportedLanguages,
-                     Iso639Language,
-                     (Language == NULL) ? "" : Language,
-                     DefaultLanguage,
-                     NULL
-                     );
+    CHAR8  *BestLanguage = GetBestLanguage (
+                             Uci->SupportedLanguages,
+                             Iso639Language,
+                             (Language == NULL) ? "" : Language,
+                             DefaultLanguage,
+                             NULL
+                             );
     if (BestLanguage != NULL) {
-      FreePool(BestLanguage);
+      FreePool (BestLanguage);
       UnicodeCollationInterface = Uci;
       RetStatus = EFI_SUCCESS;
       break;
@@ -81,10 +84,10 @@ EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
   }
 
   if (Language != NULL) {
-    FreePool(Language);
+    FreePool (Language);
   }
 
-  FreePool(Handles);
+  FreePool (Handles);
   return RetStatus;
 }
 
@@ -98,9 +101,11 @@ EFI_STATUS Ext4InitialiseUnicodeCollationInternal(
    @retval !EFI_SUCCESS  Failure.
 */
 EFI_STATUS
-Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
+Ext4InitialiseUnicodeCollation (
+  EFI_HANDLE DriverHandle
+  )
 {
-  EFI_STATUS Status;
+  EFI_STATUS  Status;
 
   Status = EFI_UNSUPPORTED;
 
@@ -111,7 +116,7 @@ Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
              DriverHandle,
              &gEfiUnicodeCollation2ProtocolGuid,
              L"PlatformLang",
-             (CONST CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultPlatformLang)
+             (CONST CHAR8 *)PcdGetPtr (PcdUefiVariableDefaultPlatformLang)
              );
   //
   // If the attempt to use Unicode Collation 2 Protocol fails, then we fall back
@@ -122,7 +127,7 @@ Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
                DriverHandle,
                &gEfiUnicodeCollationProtocolGuid,
                L"Lang",
-               (CONST CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultLang)
+               (CONST CHAR8 *)PcdGetPtr (PcdUefiVariableDefaultLang)
                );
   }
 
@@ -141,10 +146,10 @@ Ext4InitialiseUnicodeCollation(EFI_HANDLE DriverHandle)
    @retval <0  Str1 is lexically less than Str2.
 */
 INTN
-Ext4StrCmpInsensitive(
+Ext4StrCmpInsensitive (
   IN CHAR16                                 *Str1,
   IN CHAR16                                 *Str2
   )
 {
-  return UnicodeCollationInterface->StriColl(UnicodeCollationInterface, Str1, Str2);
+  return UnicodeCollationInterface->StriColl (UnicodeCollationInterface, Str1, Str2);
 }
