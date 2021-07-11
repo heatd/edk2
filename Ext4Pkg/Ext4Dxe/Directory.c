@@ -75,7 +75,7 @@ Ext4RetrieveDirent (
     st = Ext4Read (Partition, File, Buf, off, &Length);
 
     if (st != EFI_SUCCESS) {
-      FreePages (Buf, 1);
+      FreePool (Buf);
       return st;
     }
 
@@ -88,7 +88,7 @@ Ext4RetrieveDirent (
       if(entry->lsbit_namelen > RemainingBlock || entry->size > RemainingBlock) {
         // Corrupted filesystem
         // TODO: Do the proper ext4 corruption detection thing and dirty the filesystem.
-        FreePages (Buf, 1);
+        FreePool (Buf);
         return EFI_VOLUME_CORRUPTED;
       }
 
@@ -128,7 +128,7 @@ Ext4RetrieveDirent (
           !Ext4StrCmpInsensitive (Ucs2FileName, (CHAR16 *)Name)) {
         UINTN  ToCopy = entry->size > sizeof (EXT4_DIR_ENTRY) ? sizeof (EXT4_DIR_ENTRY) : entry->size;
         CopyMem (res, entry, ToCopy);
-        FreePages (Buf, 1);
+        FreePool (Buf);
         return EFI_SUCCESS;
       }
 
@@ -138,7 +138,7 @@ Ext4RetrieveDirent (
     off += Partition->BlockSize;
   }
 
-  FreePages (Buf, 1);
+  FreePool (Buf);
   return EFI_NOT_FOUND;
 }
 
@@ -274,7 +274,7 @@ Ext4OpenVolume (
   }
 
   // The filename will be "\"(null terminated of course)
-  RootDir->FileName = AllocateZeroPool (2);
+  RootDir->FileName = AllocateZeroPool (2 * sizeof(CHAR16));
 
   if (!RootDir->FileName) {
     FreePool (RootDir);

@@ -21,7 +21,7 @@ Ext4ReadInode (
                                        &InodeOffset
                                        );
 
-  EXT4_INODE  *Inode = AllocatePool (Partition->InodeSize);
+  EXT4_INODE  *Inode = Ext4AllocateInode (Partition);
 
   if (Inode == NULL) {
     return EFI_OUT_OF_RESOURCES;
@@ -46,7 +46,7 @@ Ext4ReadInode (
 
   if (EFI_ERROR (st)) {
     DEBUG ((
-      EFI_D_INFO,
+      EFI_D_ERROR,
       "[ext4] Error reading inode: st %x; inode offset %lx"
       " inode table start %lu block group %lu\n",
       st,
@@ -56,6 +56,16 @@ Ext4ReadInode (
       ));
     FreePool (Inode);
     return st;
+  }
+
+  if (!Ext4CheckInodeChecksum (Partition, Inode, InodeNum)) {
+    DEBUG ((
+      EFI_D_ERROR,
+      "[ext4] Inode %llu has invalid checksum\n",
+      InodeNum
+      ));
+    FreePool (Inode);
+    return EFI_VOLUME_CORRUPTED;
   }
 
   *OutIno = Inode;

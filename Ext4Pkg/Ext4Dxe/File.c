@@ -418,7 +418,7 @@ Ext4DuplicateFile (
     return NULL;
   }
 
-  File->Inode = AllocateZeroPool (Partition->InodeSize);
+  File->Inode = Ext4AllocateInode (Partition);
   if (File->Inode == NULL) {
     FreePool (File);
     return NULL;

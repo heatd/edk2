@@ -74,9 +74,16 @@ Ext4VerifySuperblockChecksum (
   return sb->s_checksum == Ext4CalculateSuperblockChecksum (Partition, sb);
 }
 
+/**
+ * Opens and parses the superblock.
+ * 
+ * @param[out]     Partition Partition structure to fill with filesystem details. 
+ * @retval EFI_STATUS        EFI_SUCCESS if parsing was succesful and the partition is a
+                             valid ext4 partition.
+ */
 EFI_STATUS
 Ext4OpenSuperblock (
-  EXT4_PARTITION *Partition
+  OUT EXT4_PARTITION *Partition
   )
 {
   EFI_STATUS  st = Ext4ReadDiskIo (
@@ -206,7 +213,8 @@ Ext4OpenSuperblock (
 */
 UINT32
 Ext4CalculateChecksum (
-  EXT4_PARTITION *Partition, CONST VOID *Buffer, UINTN Length, UINT32 InitialValue
+  IN CONST EXT4_PARTITION *Partition, IN CONST VOID *Buffer, IN UINTN Length,
+  IN UINT32 InitialValue
   )
 {
   if(!(Partition->FeaturesRoCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {

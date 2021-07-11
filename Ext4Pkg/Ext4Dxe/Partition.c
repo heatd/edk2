@@ -8,10 +8,20 @@
 
 #include "Ext4.h"
 
+/**
+   Open an ext4 partition.
+
+   @param[in]        DeviceHandle     Handle to the block device.
+   @param[in]        DiskIo           Pointer to an EFI_DISK_IO_PROTOCOL.
+   @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported. 
+   @param[in]        BlockIo          Pointer to an EFI_BLOCK_IO_PROTOCOL.
+   
+   @retval EFI_STATUS    EFI_SUCCESS if the opening was successful.
+ */
 EFI_STATUS
 Ext4OpenPartition (
-  EFI_HANDLE DeviceHandle, EFI_DISK_IO_PROTOCOL *diskIo,
-  EFI_DISK_IO2_PROTOCOL *diskIo2, EFI_BLOCK_IO_PROTOCOL *blockIo
+  IN EFI_HANDLE DeviceHandle, IN EFI_DISK_IO_PROTOCOL *diskIo,
+  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *diskIo2, IN EFI_BLOCK_IO_PROTOCOL *blockIo
   )
 {
   EXT4_PARTITION  *Part = AllocateZeroPool (sizeof (*Part));

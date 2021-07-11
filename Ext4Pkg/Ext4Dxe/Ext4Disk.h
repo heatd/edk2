@@ -320,7 +320,7 @@ typedef struct {
   UINT16    size;
   UINT8     lsbit_namelen;
   UINT8     type_indic;
-  CHAR8      name[255];
+  CHAR8     name[255];
 } EXT4_DIR_ENTRY;
 
 #define EXT4_MIN_DIR_ENTRY_LEN  8
@@ -372,7 +372,7 @@ typedef struct {
 } EXT4_EXTENT_TAIL;
 
 typedef UINT64  EXT4_BLOCK_NR;
-typedef UINT64  EXT4_INO_NR;
+typedef UINT32  EXT4_INO_NR;
 
 #define EXT4_INODE_SIZE(ino)  (((UINT64)ino->i_size_hi << 32) | ino->i_size_lo)
 
