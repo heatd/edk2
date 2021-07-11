@@ -263,6 +263,8 @@ Ext4Unload (
     }
   }
 
+  FreePool (DeviceHandleBuffer);
+
   Status = EfiLibUninstallAllDriverProtocols2 (
              &gExt4BindingProtocol,
              &gExt4ComponentName,
