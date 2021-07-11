@@ -61,8 +61,9 @@ Ext4ReadInode (
   if (!Ext4CheckInodeChecksum (Partition, Inode, InodeNum)) {
     DEBUG ((
       EFI_D_ERROR,
-      "[ext4] Inode %llu has invalid checksum\n",
-      InodeNum
+      "[ext4] Inode %llu has invalid checksum (calculated %x)\n",
+      InodeNum,
+      Ext4CalculateInodeChecksum (Partition, Inode, InodeNum)
       ));
     FreePool (Inode);
     return EFI_VOLUME_CORRUPTED;

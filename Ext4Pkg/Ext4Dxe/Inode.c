@@ -59,6 +59,7 @@ Ext4CalculateInodeChecksum (
 
     // 4 is the size of the i_extra_size field + the size of i_checksum_hi
     RestOfInodeLength = Partition->InodeSize - EXT4_GOOD_OLD_INODE_SIZE - 4;
+    RestOfInode = &Inode->i_ctime_extra;
   }
 
   Crc = Ext4CalculateChecksum (Partition, RestOfInode, RestOfInodeLength, Crc);
