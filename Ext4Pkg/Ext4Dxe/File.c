@@ -11,12 +11,29 @@
 #include <Guid/FileInfo.h>
 #include <Guid/FileSystemInfo.h>
 
+/**
+   Duplicates a file structure.
+
+   @param[in]        Original    Pointer to the original file.
+
+   @retval EXT4_FILE             Pointer to the new file structure.
+ */
 STATIC
 EXT4_FILE *
 Ext4DuplicateFile (
   IN CONST EXT4_FILE *Original
   );
 
+/**
+   Gets the next path segment.
+
+   @param[in]        Path        Pointer to the rest of the path.
+   @param[out]       PathSegment Pointer to the buffer that will hold the path segment.
+                                 Note: It's necessarily EXT4_NAME_MAX +1 long.
+   @param[out]       Length      Pointer to the UINTN that will hold the length of the path segment.
+
+   @retval !EFI_SUCCESS          The path segment is too large(> EXT4_NAME_MAX).
+ */
 STATIC
 EFI_STATUS
 GetPathSegment (
@@ -169,12 +186,19 @@ Ext4Close (
   return Ext4CloseInternal ((EXT4_FILE *)This);
 }
 
+/**
+   Closes a file.
+
+   @param[in]        File        Pointer to the file.
+
+   @retval EFI_STATUS            Status of the closing of the file.
+ */
 EFI_STATUS
 Ext4CloseInternal (
   IN EXT4_FILE *File
   )
 {
-  if(File == File->Partition->Root) {
+  if(File == File->Partition->Root && !File->Partition->Unmounting) {
     return EFI_SUCCESS;
   }
 
@@ -333,6 +357,15 @@ Ext4GetFileInfo (
   return StrCpyS (Info->FileName, FileNameLen + 1, File->FileName);
 }
 
+/**
+   Retrieves information about the filesystem and stores it in the EFI_FILE_SYSTEM_INFO format.
+
+   @param[in]      File           Pointer to an opened file.
+   @param[out]     Info           Pointer to a EFI_FILE_SYSTEM_INFO.
+   @param[in out]  BufferSize     Pointer to the buffer size
+
+   @retval EFI_STATUS         Status of the file information request.
+*/
 STATIC
 EFI_STATUS
 Ext4GetFilesystemInfo (
@@ -405,6 +438,13 @@ Ext4GetInfo (
   return EFI_UNSUPPORTED;
 }
 
+/**
+   Duplicates a file structure.
+
+   @param[in]        Original    Pointer to the original file.
+
+   @retval EXT4_FILE             Pointer to the new file structure.
+ */
 STATIC
 EXT4_FILE *
 Ext4DuplicateFile (

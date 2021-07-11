@@ -6,7 +6,11 @@
  *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
+#include "AutoGen.h"
 #include "Ext4.h"
+#include "Library/DebugLib.h"
+#include "Library/UefiLib.h"
+#include "Protocol/SimpleFileSystem.h"
 
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE  mExt4DriverNameTable[] = {
   {
@@ -106,18 +110,84 @@ Ext4Stop (
   IN EFI_HANDLE *ChildHandleBuffer OPTIONAL
   )
 {
-  // TODO: Implement
-  return EFI_SUCCESS;
-}
+  EFI_STATUS                       Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL  *Sfs;
+  EXT4_PARTITION                   *Partition;
+  BOOLEAN                          HasDiskIo2;
 
-EFI_STATUS
-EFIAPI
-Ext4Unload (
-  IN EFI_HANDLE ImageHandle
-  )
-{
-  // TODO: Implement
-  return EFI_SUCCESS;
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Sfs,
+                  This->DriverBindingHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                  );
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Partition = (EXT4_PARTITION *)Sfs;
+
+  HasDiskIo2 = Ext4DiskIo2 (Partition) != NULL;
+
+  Status = Ext4UnmountAndFreePartition (Partition);
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Status = gBS->UninstallMultipleProtocolInterfaces (
+                  ControllerHandle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  &Partition->Interface,
+                  NULL
+                  );
+  
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // Close all open protocols (DiskIo, DiskIo2, BlockIo)
+
+  Status = gBS->CloseProtocol (
+                  ControllerHandle,
+                  &gEfiDiskIoProtocolGuid,
+                  This->DriverBindingHandle,
+                  ControllerHandle
+                  );
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Status = gBS->CloseProtocol (
+                  ControllerHandle,
+                  &gEfiBlockIoProtocolGuid,
+                  This->DriverBindingHandle,
+                  ControllerHandle
+                  );
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  if(HasDiskIo2) {
+    Status = gBS->CloseProtocol (
+                    ControllerHandle,
+                    &gEfiDiskIo2ProtocolGuid,
+                    This->DriverBindingHandle,
+                    ControllerHandle
+                    );
+
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+
+  return Status;
 }
 
 EFI_DRIVER_BINDING_PROTOCOL  gExt4BindingProtocol =
@@ -153,6 +223,57 @@ Ext4EntryPoint (
   }
 
   return Ext4InitialiseUnicodeCollation (ImageHandle);
+}
+
+EFI_STATUS
+EFIAPI
+Ext4Unload (
+  IN EFI_HANDLE ImageHandle
+  )
+{
+  EFI_STATUS  Status;
+  EFI_HANDLE  *DeviceHandleBuffer;
+  UINTN       DeviceHandleCount;
+  UINTN       Index;
+
+  Status = gBS->LocateHandleBuffer (
+                  AllHandles,
+                  NULL,
+                  NULL,
+                  &DeviceHandleCount,
+                  &DeviceHandleBuffer
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  for(Index = 0; Index < DeviceHandleCount; Index++) {
+    EFI_HANDLE  Handle;
+
+    Handle = DeviceHandleBuffer[Index];
+
+    Status = EfiTestManagedDevice (Handle, ImageHandle, &gEfiDiskIoProtocolGuid);
+
+    if(Status == EFI_SUCCESS) {
+      Status = gBS->DisconnectController (Handle, ImageHandle, NULL);
+
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+    }
+  }
+
+  Status = EfiLibUninstallAllDriverProtocols2 (
+             &gExt4BindingProtocol,
+             &gExt4ComponentName,
+             &gExt4ComponentName2,
+             NULL,
+             NULL,
+             NULL,
+             NULL
+             );
+
+  return Status;
 }
 
 EFI_STATUS EFIAPI

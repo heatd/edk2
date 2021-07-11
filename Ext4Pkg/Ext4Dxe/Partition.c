@@ -20,8 +20,8 @@
  */
 EFI_STATUS
 Ext4OpenPartition (
-  IN EFI_HANDLE DeviceHandle, IN EFI_DISK_IO_PROTOCOL *diskIo,
-  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *diskIo2, IN EFI_BLOCK_IO_PROTOCOL *blockIo
+  IN EFI_HANDLE DeviceHandle, IN EFI_DISK_IO_PROTOCOL *DiskIo,
+  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *DiskIo2, IN EFI_BLOCK_IO_PROTOCOL *BlockIo
   )
 {
   EXT4_PARTITION  *Part = AllocateZeroPool (sizeof (*Part));
@@ -30,9 +30,9 @@ Ext4OpenPartition (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  Part->BlockIo = blockIo;
-  Part->DiskIo  = diskIo;
-  Part->DiskIo2 = diskIo2;
+  Part->BlockIo = BlockIo;
+  Part->DiskIo  = DiskIo;
+  Part->DiskIo2 = DiskIo2;
 
   EFI_STATUS  st = Ext4OpenSuperblock (Part);
 
@@ -58,6 +58,12 @@ Ext4OpenPartition (
   return EFI_SUCCESS;
 }
 
+/**
+   Sets up the protocol and metadata of a file that is being opened.
+
+   @param[in out]        File        Pointer to the file.
+   @param[in]            Partition   Pointer to the opened partition.
+ */
 VOID
 Ext4SetupFile (
   IN OUT EXT4_FILE *File, EXT4_PARTITION *Partition
@@ -75,4 +81,24 @@ Ext4SetupFile (
   File->Protocol.GetInfo     = Ext4GetInfo;
 
   File->Partition = Partition;
+}
+
+/**
+   Unmounts and frees an ext4 partition.
+
+   @param[in]        Partition        Pointer to the opened partition.
+
+   @retval EFI_STATUS    Status of the unmount.
+ */
+EFI_STATUS
+Ext4UnmountAndFreePartition (
+  IN EXT4_PARTITION *Partition
+  )
+{
+  Partition->Unmounting = TRUE;
+  Ext4CloseInternal(Partition->Root);
+  FreePool(Partition->BlockGroups);
+  FreePool(Partition);
+
+  return EFI_SUCCESS;
 }

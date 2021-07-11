@@ -61,6 +61,7 @@ typedef struct _Ext4_PARTITION {
   EFI_BLOCK_IO_PROTOCOL              *BlockIo;
 
   EXT4_SUPERBLOCK                    SuperBlock;
+  BOOLEAN                            Unmounting;
 
   UINT32                             FeaturesIncompat;
   UINT32                             FeaturesCompat;
@@ -375,11 +376,26 @@ Ext4OpenVolume (
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI_FILE_PROTOCOL **Root
   );
 
+// End of EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
+
+/**
+   Sets up the protocol and metadata of a file that is being opened.
+
+   @param[in out]        File        Pointer to the file.
+   @param[in]            Partition   Pointer to the opened partition.
+ */
 VOID
 Ext4SetupFile (
   IN OUT EXT4_FILE *File, IN EXT4_PARTITION *Partition
   );
 
+/**
+   Closes a file.
+
+   @param[in]        File        Pointer to the file.
+   
+   @retval EFI_STATUS            Status of the closing of the file.
+ */
 EFI_STATUS
 Ext4CloseInternal (
   IN EXT4_FILE *File
@@ -694,6 +710,18 @@ BOOLEAN Ext4CheckInodeChecksum (
   IN CONST EXT4_PARTITION *Partition,
   IN CONST EXT4_INODE *Inode,
   IN EXT4_INO_NR InodeNum
+  );
+
+/**
+   Unmounts and frees an ext4 partition.
+
+   @param[in]        Partition        Pointer to the opened partition.
+
+   @retval EFI_STATUS    Status of the unmount.
+ */
+EFI_STATUS
+Ext4UnmountAndFreePartition (
+  IN EXT4_PARTITION *Partition
   );
 
 #endif
