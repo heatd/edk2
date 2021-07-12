@@ -35,19 +35,32 @@ Ext4GetExtentFromMap (
   IN EXT4_FILE *File, UINT32 Block
   );
 
+/**
+   Retrieves the pointer to the top of the extent tree.
+   @param[in]      Inode         Pointer to the inode structure.
+
+   @retval EXT4_EXTENT_HEADER    Pointer to an EXT4_EXTENT_HEADER. This pointer is inside
+                                 the inode and must not be freed.
+*/
 STATIC
 EXT4_EXTENT_HEADER *
 Ext4GetInoExtentHeader (
-  EXT4_INODE *Inode
+  IN EXT4_INODE *Inode
   )
 {
   return (EXT4_EXTENT_HEADER *)Inode->i_data;
 }
 
+/**
+   Checks if an extent header is valid.
+   @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
+
+   @retval BOOLEAN    TRUE if valid, FALSE if not.
+*/
 STATIC
 BOOLEAN
 Ext4ExtentHeaderValid (
-  EXT4_EXTENT_HEADER *Header
+  IN CONST EXT4_EXTENT_HEADER *Header
   )
 {
   if(Header->eh_depth > EXT4_EXTENT_TREE_MAX_DEPTH) {
@@ -73,10 +86,19 @@ Ext4ExtentHeaderValid (
   return TRUE;
 }
 
+/**
+   Performs a binary search for a EXT4_EXTENT_INDEX that corresponds to a 
+   logical block in a given extent tree node.
+
+   @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
+   @param[in]      LogicalBlock   Block that will be searched
+
+   @retval EXT4_EXTENT_INDEX*     Pointer to the found EXT4_EXTENT_INDEX.
+*/
 STATIC
 EXT4_EXTENT_INDEX *
 Ext4BinsearchExtentIndex (
-  EXT4_EXTENT_HEADER *Header, EXT4_BLOCK_NR LogicalBlock
+  IN EXT4_EXTENT_HEADER *Header, IN EXT4_BLOCK_NR LogicalBlock
   )
 {
   EXT4_EXTENT_INDEX  *l = ((EXT4_EXTENT_INDEX *)(Header + 1)) + 1;
@@ -99,10 +121,22 @@ Ext4BinsearchExtentIndex (
   return l - 1;
 }
 
+/**
+   Performs a binary search for a EXT4_EXTENT that corresponds to a 
+   logical block in a given extent tree node.
+
+   @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
+   @param[in]      LogicalBlock   Block that will be searched
+
+   @retval EXT4_EXTENT_INDEX*     Pointer to the found EXT4_EXTENT_INDEX.
+           NULL                   Array is empty.
+                                  Note: The caller must check if the logical block
+                                  is actually mapped under the given extent.
+*/
 STATIC
 EXT4_EXTENT *
 Ext4BinsearchExtentExt (
-  EXT4_EXTENT_HEADER *Header, EXT4_BLOCK_NR LogicalBlock
+  IN EXT4_EXTENT_HEADER *Header, IN EXT4_BLOCK_NR LogicalBlock
   )
 {
   EXT4_EXTENT  *l = ((EXT4_EXTENT *)(Header + 1)) + 1;
@@ -130,9 +164,17 @@ Ext4BinsearchExtentExt (
   return l - 1;
 }
 
+/**
+   Retrieves the leaf block from an EXT4_EXTENT_INDEX.
+
+   @param[in]      Index          Pointer to the EXT4_EXTENT_INDEX structure.
+
+   @retval EXT4_BLOCK_NR          Block number of the leaf node.
+*/
+STATIC
 EXT4_BLOCK_NR
 Ext4ExtentIdxLeafBlock (
-  EXT4_EXTENT_INDEX *Index
+  IN EXT4_EXTENT_INDEX *Index
   )
 {
   return ((UINT64)Index->ei_leaf_hi << 32) | Index->ei_leaf_lo;
@@ -141,9 +183,19 @@ Ext4ExtentIdxLeafBlock (
 STATIC UINTN  GetExtentRequests  = 0;
 STATIC UINTN  GetExtentCacheHits = 0;
 
+/**
+   Retrieves an extent from an EXT4 inode.
+   @param[in]      Partition     Pointer to the opened EXT4 partition.
+   @param[in]      File          Pointer to the opened file.
+   @param[in]      LogicalBlock  Block number which the returned extent must cover.
+   @param[out]     Extent        Pointer to the output buffer, where the extent will be copied to.
+
+   @retval EFI_STATUS         Status of the retrieval operation.
+           EFI_NO_MAPPING     Block has no mapping.
+*/
 EFI_STATUS
 Ext4GetExtent (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
+  IN EXT4_PARTITION *Partition, IN EXT4_FILE *File, IN EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
   )
 {
   EXT4_INODE  *Inode = File->Inode;
@@ -251,6 +303,20 @@ Ext4GetExtent (
   return EFI_SUCCESS;
 }
 
+/**
+  Compare two EXT4_EXTENT structs.
+  Used in the extent map's ORDERED_COLLECTION.
+
+  @param[in] UserStruct1  Pointer to the first user structure.
+
+  @param[in] UserStruct2  Pointer to the second user structure.
+
+  @retval <0  If UserStruct1 compares less than UserStruct2.
+
+  @retval  0  If UserStruct1 compares equal to UserStruct2.
+
+  @retval >0  If UserStruct1 compares greater than UserStruct2.
+**/
 STATIC
 INTN EFIAPI
 Ext4ExtentsMapStructCompare (
@@ -269,6 +335,21 @@ Ext4ExtentsMapStructCompare (
          Extent1->ee_block > Extent2->ee_block ? 1 : 0;
 }
 
+/**
+  Compare a standalone key against a EXT4_EXTENT containing an embedded key.
+  Used in the extent map's ORDERED_COLLECTION.
+
+  @param[in] StandaloneKey  Pointer to the bare key.
+
+  @param[in] UserStruct     Pointer to the user structure with the embedded
+                            key.
+
+  @retval <0  If StandaloneKey compares less than UserStruct's key.
+
+  @retval  0  If StandaloneKey compares equal to UserStruct's key.
+
+  @retval >0  If StandaloneKey compares greater than UserStruct's key.
+**/
 STATIC
 INTN EFIAPI
 Ext4ExtentsMapKeyCompare (

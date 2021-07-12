@@ -9,9 +9,18 @@
 
 #include "Ext4.h"
 
+/**
+   Reads an inode from disk.
+   
+   @param[in]    Partition  Pointer to the opened partition. 
+   @param[in]    InodeNum   Number of the desired Inode 
+   @param[out]   OutIno     Pointer to where it will be stored a pointer to the read inode.
+
+   @retval EFI_STATUS       Status of the inode read. 
+ */
 EFI_STATUS
 Ext4ReadInode (
-  EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_INODE **OutIno
+  IN EXT4_PARTITION *Partition, IN EXT4_INO_NR InodeNum, OUT EXT4_INODE **OutIno
   )
 {
   UINT64  InodeOffset;
@@ -20,6 +29,11 @@ Ext4ReadInode (
                                        Partition->SuperBlock.s_inodes_per_group,
                                        &InodeOffset
                                        );
+
+  // Check for the block group number's correctness
+  if (BlockGroupNumber >= Partition->NumberBlockGroups) {
+    return EFI_VOLUME_CORRUPTED;
+  }
 
   EXT4_INODE  *Inode = Ext4AllocateInode (Partition);
 

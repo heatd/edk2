@@ -41,9 +41,9 @@
 
    @param[in]        DeviceHandle     Handle to the block device.
    @param[in]        DiskIo           Pointer to an EFI_DISK_IO_PROTOCOL.
-   @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported. 
+   @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported.
    @param[in]        BlockIo          Pointer to an EFI_BLOCK_IO_PROTOCOL.
-   
+
    @retval EFI_STATUS    EFI_SUCCESS if the opening was successful.
  */
 EFI_STATUS
@@ -82,7 +82,7 @@ typedef struct _Ext4_PARTITION {
 /**
    Opens and parses the superblock.
 
-   @param[out]     Partition Partition structure to fill with filesystem details. 
+   @param[out]     Partition Partition structure to fill with filesystem details.
    @retval EFI_STATUS        EFI_SUCCESS if parsing was succesful and the partition is a
                              valid ext4 partition.
  */
@@ -93,8 +93,8 @@ Ext4OpenSuperblock (
 
 /**
    Retrieves the EFI_BLOCK_IO_PROTOCOL of the partition.
-   
-   @param[in]     Partition  Pointer to the opened ext4 partition. 
+
+   @param[in]     Partition  Pointer to the opened ext4 partition.
    @retval EFI_BLOCK_IO_PROTOCOL  Retrieved Block IO protocol.
  */
 STATIC inline
@@ -108,8 +108,8 @@ Ext4BlockIo (
 
 /**
    Retrieves the EFI_DISK_IO_PROTOCOL of the partition.
-   
-   @param[in]     Partition  Pointer to the opened ext4 partition. 
+
+   @param[in]     Partition  Pointer to the opened ext4 partition.
    @retval EFI_DISK_IO_PROTOCOL  Retrieved Disk IO protocol.
  */
 STATIC inline
@@ -123,8 +123,8 @@ Ext4DiskIo (
 
 /**
    Retrieves the EFI_DISK_IO2_PROTOCOL of the partition.
-   
-   @param[in]     Partition  Pointer to the opened ext4 partition. 
+
+   @param[in]     Partition  Pointer to the opened ext4 partition.
    @retval EFI_DISK_IO2_PROTOCOL  Retrieved Disk IO2 protocol, or NULL if not supported.
  */
 STATIC inline
@@ -138,8 +138,8 @@ Ext4DiskIo2 (
 
 /**
    Retrieves the media ID of the partition.
-   
-   @param[in]     Partition  Pointer to the opened ext4 partition. 
+
+   @param[in]     Partition  Pointer to the opened ext4 partition.
    @retval UINT32            Retrieved media ID.
  */
 STATIC inline
@@ -246,19 +246,36 @@ Ext4GetBlockGroupDesc (
   IN EXT4_PARTITION *Partition, IN UINT32 BlockGroup
   )
 {
-  // Maybe assert that the block group nr isn't a nonsense number? 
-  return (EXT4_BLOCK_GROUP_DESC *)((CHAR8 *) Partition->BlockGroups + BlockGroup * Partition->DescSize);
+  // Maybe assert that the block group nr isn't a nonsense number?
+  return (EXT4_BLOCK_GROUP_DESC *)((CHAR8 *)Partition->BlockGroups + BlockGroup * Partition->DescSize);
 }
 
+/**
+   Reads an inode from disk.
+
+   @param[in]    Partition  Pointer to the opened partition.
+   @param[in]    InodeNum   Number of the desired Inode
+   @param[out]   OutIno     Pointer to where it will be stored a pointer to the read inode.
+
+   @retval EFI_STATUS       Status of the inode read.
+ */
 EFI_STATUS
 Ext4ReadInode (
-  EXT4_PARTITION *Partition, EXT4_INO_NR InodeNum, EXT4_INODE **OutIno
+  IN EXT4_PARTITION *Partition, IN EXT4_INO_NR InodeNum, OUT EXT4_INODE **OutIno
   );
 
+/**
+   Converts blocks to bytes.
+
+   @param[in]    Partition  Pointer to the opened partition.
+   @param[in]    Block      Block number/number of blocks.
+
+   @retval UINT64       Number of bytes.
+ */
 STATIC inline
 UINT64
 Ext4BlockToByteOffset (
-  CONST EXT4_PARTITION *Partition, EXT4_BLOCK_NR Block
+  IN CONST EXT4_PARTITION *Partition, IN EXT4_BLOCK_NR Block
   )
 {
   return Partition->BlockSize * Block;
@@ -280,18 +297,36 @@ Ext4Read (
   EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length
   );
 
+/**
+   Retrieves the size of the inode.
+
+   @param[in]    Inode      Pointer to the ext4 inode.
+
+   @retval UINT64          Size of the inode, in bytes.
+ */
 STATIC inline
 UINT64
 Ext4InodeSize (
-  EXT4_INODE *Inode
+  CONST EXT4_INODE *Inode
   )
 {
   return ((UINT64)Inode->i_size_hi << 32) | Inode->i_size_lo;
 }
 
+
+/**
+   Retrieves an extent from an EXT4 inode.
+   @param[in]      Partition     Pointer to the opened EXT4 partition.
+   @param[in]      File          Pointer to the opened file.
+   @param[in]      LogicalBlock  Block number which the returned extent must cover.
+   @param[out]     Extent        Pointer to the output buffer, where the extent will be copied to.
+
+   @retval EFI_STATUS         Status of the retrieval operation.
+           EFI_NO_MAPPING     Block has no mapping.
+*/
 EFI_STATUS
 Ext4GetExtent (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
+  IN EXT4_PARTITION *Partition, IN EXT4_FILE *File, IN EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
   );
 
 struct _Ext4File {
@@ -393,7 +428,7 @@ Ext4SetupFile (
    Closes a file.
 
    @param[in]        File        Pointer to the file.
-   
+
    @retval EFI_STATUS            Status of the closing of the file.
  */
 EFI_STATUS
@@ -706,7 +741,8 @@ Ext4CalculateInodeChecksum (
 
    @retval BOOLEAN   True if checksum if correct, false if there is corruption.
 */
-BOOLEAN Ext4CheckInodeChecksum (
+BOOLEAN
+Ext4CheckInodeChecksum (
   IN CONST EXT4_PARTITION *Partition,
   IN CONST EXT4_INODE *Inode,
   IN EXT4_INO_NR InodeNum
