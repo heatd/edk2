@@ -313,7 +313,6 @@ Ext4InodeSize (
   return ((UINT64)Inode->i_size_hi << 32) | Inode->i_size_lo;
 }
 
-
 /**
    Retrieves an extent from an EXT4 inode.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
@@ -704,6 +703,20 @@ CalculateCrc32c (
   );
 
 /**
+   Calculates the CRC16 checksum of the given buffer.
+
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @retval UINT16   The CRC16 checksum.
+*/
+UINT16
+CalculateCrc16 (
+  CONST VOID *Buffer, UINTN Length, UINT16 InitialValue
+  );
+
+/**
    Calculates the checksum of the given buffer.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
    @param[in]      Buffer        Pointer to the buffer.
@@ -758,6 +771,36 @@ Ext4CheckInodeChecksum (
 EFI_STATUS
 Ext4UnmountAndFreePartition (
   IN EXT4_PARTITION *Partition
+  );
+
+/**
+   Checks if the checksum of the block group descriptor is correct.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+BOOLEAN
+Ext4VerifyBlockGroupDescChecksum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
+  );
+
+/**
+   Calculates the checksum of the block group descriptor.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval UINT16   The checksum.
+*/
+UINT16
+Ext4CalculateBlockGroupDescChecksum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
   );
 
 #endif

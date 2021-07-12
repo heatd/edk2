@@ -7,6 +7,7 @@
  */
 
 #include "Ext4.h"
+#include "Uefi/UefiBaseType.h"
 
 STATIC CONST UINT32  supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
 
@@ -76,8 +77,8 @@ Ext4VerifySuperblockChecksum (
 
 /**
  * Opens and parses the superblock.
- * 
- * @param[out]     Partition Partition structure to fill with filesystem details. 
+ *
+ * @param[out]     Partition Partition structure to fill with filesystem details.
  * @retval EFI_STATUS        EFI_SUCCESS if parsing was succesful and the partition is a
                              valid ext4 partition.
  */
@@ -86,28 +87,32 @@ Ext4OpenSuperblock (
   OUT EXT4_PARTITION *Partition
   )
 {
-  EFI_STATUS  st = Ext4ReadDiskIo (
-                     Partition,
-                     &Partition->SuperBlock,
-                     sizeof (EXT4_SUPERBLOCK),
-                     EXT4_SUPERBLOCK_OFFSET
-                     );
+  UINT32      Index;
+  EFI_STATUS  Status;
+  EXT4_SUPERBLOCK  *Sb;
 
-  if (EFI_ERROR (st)) {
-    return st;
+  Status = Ext4ReadDiskIo (
+             Partition,
+             &Partition->SuperBlock,
+             sizeof (EXT4_SUPERBLOCK),
+             EXT4_SUPERBLOCK_OFFSET
+             );
+
+  if (EFI_ERROR (Status)) {
+    return Status;
   }
+  
+  Sb = &Partition->SuperBlock;
 
-  EXT4_SUPERBLOCK  *sb = &Partition->SuperBlock;
-
-  if (!Ext4SuperblockValidate (sb)) {
+  if (!Ext4SuperblockValidate (Sb)) {
     return EFI_VOLUME_CORRUPTED;
   }
 
-  if (sb->s_rev_level == EXT4_DYNAMIC_REV) {
-    Partition->FeaturesCompat   = sb->s_feature_compat;
-    Partition->FeaturesIncompat = sb->s_feature_incompat;
-    Partition->FeaturesRoCompat = sb->s_feature_ro_compat;
-    Partition->InodeSize = sb->s_inode_size;
+  if (Sb->s_rev_level == EXT4_DYNAMIC_REV) {
+    Partition->FeaturesCompat   = Sb->s_feature_compat;
+    Partition->FeaturesIncompat = Sb->s_feature_incompat;
+    Partition->FeaturesRoCompat = Sb->s_feature_ro_compat;
+    Partition->InodeSize = Sb->s_inode_size;
   } else {
     // GOOD_OLD_REV
     Partition->FeaturesCompat = Partition->FeaturesIncompat = Partition->FeaturesRoCompat = 0;
@@ -125,14 +130,14 @@ Ext4OpenSuperblock (
 
   // At the time of writing, it's the only supported checksum.
   if (Partition->FeaturesCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM &&
-      sb->s_checksum_type != EXT4_CHECKSUM_CRC32C) {
+      Sb->s_checksum_type != EXT4_CHECKSUM_CRC32C) {
     return EFI_UNSUPPORTED;
   }
 
   if (Partition->FeaturesIncompat & EXT4_FEATURE_INCOMPAT_CSUM_SEED) {
-    Partition->InitialSeed = sb->s_checksum_seed;
+    Partition->InitialSeed = Sb->s_checksum_seed;
   } else {
-    Partition->InitialSeed = Ext4CalculateChecksum (Partition, sb->s_uuid, 16, ~0U);
+    Partition->InitialSeed = Ext4CalculateChecksum (Partition, Sb->s_uuid, 16, ~0U);
   }
 
   UINT32  unsupported_ro_compat = Partition->FeaturesRoCompat & ~supported_ro_compat_feat;
@@ -146,15 +151,15 @@ Ext4OpenSuperblock (
 
   DEBUG ((EFI_D_INFO, "Read only = %u\n", Partition->ReadOnly));
 
-  Partition->BlockSize = 1024 << sb->s_log_block_size;
+  Partition->BlockSize = 1024 << Sb->s_log_block_size;
 
   // The size of a block group can also be calculated as 8 * Partition->BlockSize
-  if(sb->s_blocks_per_group != 8 * Partition->BlockSize) {
+  if(Sb->s_blocks_per_group != 8 * Partition->BlockSize) {
     return EFI_UNSUPPORTED;
   }
 
-  Partition->NumberBlocks = Ext4MakeBlockNumberFromHalfs (Partition, sb->s_blocks_count, sb->s_blocks_count_hi);
-  Partition->NumberBlockGroups = DivU64x32 (Partition->NumberBlocks, sb->s_blocks_per_group);
+  Partition->NumberBlocks = Ext4MakeBlockNumberFromHalfs (Partition, Sb->s_blocks_count, Sb->s_blocks_count_hi);
+  Partition->NumberBlockGroups = DivU64x32 (Partition->NumberBlocks, Sb->s_blocks_per_group);
 
   DEBUG ((
     EFI_D_INFO,
@@ -164,7 +169,7 @@ Ext4OpenSuperblock (
     ));
 
   if (Ext4Is64Bit (Partition)) {
-    Partition->DescSize = sb->s_desc_size;
+    Partition->DescSize = Sb->s_desc_size;
   } else {
     Partition->DescSize = EXT4_OLD_BLOCK_DESC_SIZE;
   }
@@ -174,8 +179,8 @@ Ext4OpenSuperblock (
     return EFI_VOLUME_CORRUPTED;
   }
 
-  if (!Ext4VerifySuperblockChecksum (Partition, sb)) {
-    DEBUG ((EFI_D_ERROR, "[ext4] Bad superblock checksum %lx\n", Ext4CalculateSuperblockChecksum (Partition, sb)));
+  if (!Ext4VerifySuperblockChecksum (Partition, Sb)) {
+    DEBUG ((EFI_D_ERROR, "[ext4] Bad superblock checksum %lx\n", Ext4CalculateSuperblockChecksum (Partition, Sb)));
     return EFI_VOLUME_CORRUPTED;
   }
 
@@ -196,10 +201,19 @@ Ext4OpenSuperblock (
     return EFI_OUT_OF_RESOURCES;
   }
 
+  for (Index = 0; Index < Partition->NumberBlockGroups; Index++) {
+    EXT4_BLOCK_GROUP_DESC *Desc = Ext4GetBlockGroupDesc(Partition, Index);
+    if (!Ext4VerifyBlockGroupDescChecksum(Partition, Desc, Index)) {
+      DEBUG ((EFI_D_INFO, "[ext4] Block group descriptor %u has an invalid checksum\n", Index));
+      return EFI_VOLUME_CORRUPTED;
+    }
+  }
+  
   // Note that the cast below is completely safe, because EXT4_FILE is a specialisation of EFI_FILE_PROTOCOL
-  st = Ext4OpenVolume (&Partition->Interface, (EFI_FILE_PROTOCOL **)&Partition->Root);
+  Status = Ext4OpenVolume (&Partition->Interface, (EFI_FILE_PROTOCOL **)&Partition->Root);
+
   DEBUG ((EFI_D_INFO, "[ext4] Root File %p\n", Partition->Root));
-  return st;
+  return Status;
 }
 
 /**

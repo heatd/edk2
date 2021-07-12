@@ -44,6 +44,7 @@
   File.c
   Collation.c
   Crc32c.c
+  Crc16.c
 
 [Packages]
   EmbeddedPkg/EmbeddedPkg.dec

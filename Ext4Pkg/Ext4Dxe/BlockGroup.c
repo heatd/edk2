@@ -11,12 +11,12 @@
 
 /**
    Reads an inode from disk.
-   
-   @param[in]    Partition  Pointer to the opened partition. 
-   @param[in]    InodeNum   Number of the desired Inode 
+
+   @param[in]    Partition  Pointer to the opened partition.
+   @param[in]    InodeNum   Number of the desired Inode
    @param[out]   OutIno     Pointer to where it will be stored a pointer to the read inode.
 
-   @retval EFI_STATUS       Status of the inode read. 
+   @retval EFI_STATUS       Status of the inode read.
  */
 EFI_STATUS
 Ext4ReadInode (
@@ -85,4 +85,114 @@ Ext4ReadInode (
 
   *OutIno = Inode;
   return EFI_SUCCESS;
+}
+
+/**
+   Calculates the checksum of the block group descriptor for METADATA_CSUM enabled filesystems.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval UINT16   The checksum.
+*/
+STATIC
+UINT16
+Ext4CalculateBlockGroupDescChecksumMetadataCsum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
+  )
+{
+  UINT32  Csum;
+  UINT16  Dummy;
+
+  Dummy = 0;
+
+  Csum = Ext4CalculateChecksum (Partition, &BlockGroupNum, sizeof (BlockGroupNum), Partition->InitialSeed);
+  Csum = Ext4CalculateChecksum (Partition, BlockGroupDesc, OFFSET_OF (EXT4_BLOCK_GROUP_DESC, bg_checksum), Csum);
+  Csum = Ext4CalculateChecksum (Partition, &Dummy, sizeof (Dummy), Csum);
+  Csum =
+    Ext4CalculateChecksum (
+      Partition,
+      &BlockGroupDesc->bg_block_bitmap_hi,
+      Partition->DescSize - OFFSET_OF (EXT4_BLOCK_GROUP_DESC, bg_block_bitmap_hi),
+      Csum
+      );
+  return (UINT16)Csum;
+}
+
+/**
+   Calculates the checksum of the block group descriptor for GDT_CSUM enabled filesystems.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval UINT16   The checksum.
+*/
+STATIC
+UINT16
+Ext4CalculateBlockGroupDescChecksumGdtCsum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
+  )
+{
+  UINT16  Csum;
+  UINT16  Dummy;
+
+  Dummy = 0;
+
+  Csum = CalculateCrc16 (Partition->SuperBlock.s_uuid, 16, 0);
+  Csum = CalculateCrc16 (&BlockGroupNum, sizeof (BlockGroupNum), Csum);
+  Csum = CalculateCrc16 (BlockGroupDesc, OFFSET_OF (EXT4_BLOCK_GROUP_DESC, bg_checksum), Csum);
+  Csum = CalculateCrc16 (&Dummy, sizeof (Dummy), Csum);
+  Csum =
+    CalculateCrc16 (
+      &BlockGroupDesc->bg_block_bitmap_hi,
+      Partition->DescSize - OFFSET_OF (EXT4_BLOCK_GROUP_DESC, bg_block_bitmap_hi),
+      Csum
+      );
+  return Csum;
+}
+
+/**
+   Checks if the checksum of the block group descriptor is correct.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+BOOLEAN
+Ext4VerifyBlockGroupDescChecksum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
+  )
+{
+  return Ext4CalculateBlockGroupDescChecksum (Partition, BlockGroupDesc, BlockGroupNum) == BlockGroupDesc->bg_checksum;
+}
+
+/**
+   Calculates the checksum of the block group descriptor.
+   @param[in]      Partition       Pointer to the opened EXT4 partition.
+   @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
+   @param[in]      BlockGroupNum   Number of the block group.
+
+   @retval UINT16   The checksum.
+*/
+UINT16
+Ext4CalculateBlockGroupDescChecksum (
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
+  IN UINT32 BlockGroupNum
+  )
+{
+  if(Partition->FeaturesRoCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
+    return Ext4CalculateBlockGroupDescChecksumMetadataCsum (Partition, BlockGroupDesc, BlockGroupNum);
+  } else if(Partition->FeaturesRoCompat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+    return Ext4CalculateBlockGroupDescChecksumGdtCsum (Partition, BlockGroupDesc, BlockGroupNum);
+  }
+
+  return 0;
 }

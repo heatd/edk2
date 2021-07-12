@@ -8,7 +8,7 @@
 
 #include <Uefi.h>
 
-STATIC CONST UINT32 Crc32c_lookup_table[256] = {
+STATIC CONST UINT32  gCrc32cLookupTable[256] = {
   0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4, 0xc79a971f, 0x35f1141c,
   0x26a1e7e8, 0xd4ca64eb, 0x8ad958cf, 0x78b2dbcc, 0x6be22838, 0x9989ab3b,
   0x4d43cfd0, 0xbf284cd3, 0xac78bf27, 0x5e133c24, 0x105ec76f, 0xe235446c,
@@ -63,14 +63,17 @@ STATIC CONST UINT32 Crc32c_lookup_table[256] = {
 
    @retval UINT32   The CRC32c checksum.
 */
-UINT32 CalculateCrc32c(CONST VOID *Buffer, UINTN Length, UINT32 InitialValue)
+UINT32
+CalculateCrc32c (
+  CONST VOID *Buffer, UINTN Length, UINT32 InitialValue
+  )
 {
-  CONST UINT8 *Buf = Buffer;
+  CONST UINT8  *Buf = Buffer;
 
-  UINT32 Crc = ~InitialValue;
-  while(Length-- != 0)
-  {
-    Crc = Crc32c_lookup_table[(Crc & 0xFF) ^ *(Buf++)] ^ (Crc >> 8);
+  UINT32  Crc = ~InitialValue;
+
+  while(Length-- != 0) {
+    Crc = gCrc32cLookupTable[(Crc & 0xFF) ^ *(Buf++)] ^ (Crc >> 8);
   }
 
   return ~Crc;
