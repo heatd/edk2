@@ -87,7 +87,7 @@ Ext4ExtentHeaderValid (
 }
 
 /**
-   Performs a binary search for a EXT4_EXTENT_INDEX that corresponds to a 
+   Performs a binary search for a EXT4_EXTENT_INDEX that corresponds to a
    logical block in a given extent tree node.
 
    @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
@@ -122,7 +122,7 @@ Ext4BinsearchExtentIndex (
 }
 
 /**
-   Performs a binary search for a EXT4_EXTENT that corresponds to a 
+   Performs a binary search for a EXT4_EXTENT that corresponds to a
    logical block in a given extent tree node.
 
    @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
