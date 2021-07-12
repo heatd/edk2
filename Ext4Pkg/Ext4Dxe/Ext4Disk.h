@@ -375,9 +375,9 @@ typedef struct _Ext4Inode {
 
 typedef struct {
   UINT32    inode;
-  UINT16    size;
-  UINT8     lsbit_namelen;
-  UINT8     type_indic;
+  UINT16    rec_len;
+  UINT8     name_len;
+  UINT8     file_type;
   CHAR8     name[255];
 } EXT4_DIR_ENTRY;
 

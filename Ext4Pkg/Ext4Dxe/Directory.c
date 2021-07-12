@@ -24,9 +24,9 @@ Ext4GetUcs2DirentName (
 {
   CHAR8  Utf8NameBuf[EXT4_NAME_MAX + 1];
 
-  CopyMem (Utf8NameBuf, Entry->name, Entry->lsbit_namelen);
+  CopyMem (Utf8NameBuf, Entry->name, Entry->name_len);
 
-  Utf8NameBuf[Entry->lsbit_namelen] = '\0';
+  Utf8NameBuf[Entry->name_len] = '\0';
 
   // TODO: Use RedfishPkg's UTF-8 translation routines.
   // This only handles ASCII which is incorrect
@@ -81,11 +81,11 @@ Ext4RetrieveDirent (
 
     for(CHAR8 *b = Buf; b < Buf + Partition->BlockSize; ) {
       EXT4_DIR_ENTRY  *entry = (EXT4_DIR_ENTRY *)b;
-      ASSERT (entry->size != 0);
+      ASSERT (entry->rec_len != 0);
 
       UINTN  RemainingBlock = Partition->BlockSize - (b - Buf);
 
-      if(entry->lsbit_namelen > RemainingBlock || entry->size > RemainingBlock) {
+      if(entry->name_len > RemainingBlock || entry->rec_len > RemainingBlock) {
         // Corrupted filesystem
         // TODO: Do the proper ext4 corruption detection thing and dirty the filesystem.
         FreePool (Buf);
@@ -98,13 +98,13 @@ Ext4RetrieveDirent (
         1) It's nicer to work with.
         2) Linux and a number of BSDs also have a filename limit of 255.
       */
-      if(entry->lsbit_namelen > EXT4_NAME_MAX) {
+      if(entry->name_len > EXT4_NAME_MAX) {
         continue;
       }
 
       // Unused entry
       if(entry->inode == 0) {
-        b += entry->size;
+        b += entry->rec_len;
         continue;
       }
 
@@ -120,19 +120,19 @@ Ext4RetrieveDirent (
       if (EFI_ERROR (st)) {
         // If we error out, skip this entry
         // I'm not sure if this is correct behaviour, but I don't think there's a precedent here.
-        b += entry->size;
+        b += entry->rec_len;
         continue;
       }
 
-      if (entry->lsbit_namelen == StrLen (Name) &&
+      if (entry->name_len == StrLen (Name) &&
           !Ext4StrCmpInsensitive (Ucs2FileName, (CHAR16 *)Name)) {
-        UINTN  ToCopy = entry->size > sizeof (EXT4_DIR_ENTRY) ? sizeof (EXT4_DIR_ENTRY) : entry->size;
+        UINTN  ToCopy = entry->rec_len > sizeof (EXT4_DIR_ENTRY) ? sizeof (EXT4_DIR_ENTRY) : entry->rec_len;
         CopyMem (res, entry, ToCopy);
         FreePool (Buf);
         return EFI_SUCCESS;
       }
 
-      b += entry->size;
+      b += entry->rec_len;
     }
 
     off += Partition->BlockSize;
@@ -305,15 +305,15 @@ Ext4ValidDirent (
   EXT4_DIR_ENTRY *Dirent
   )
 {
-  UINTN  RequiredSize = Dirent->lsbit_namelen + EXT4_MIN_DIR_ENTRY_LEN;
+  UINTN  RequiredSize = Dirent->name_len + EXT4_MIN_DIR_ENTRY_LEN;
 
-  if (Dirent->size < RequiredSize) {
-    DEBUG ((EFI_D_ERROR, "[ext4] dirent size %lu too small (compared to %lu)\n", Dirent->size, RequiredSize));
+  if (Dirent->rec_len < RequiredSize) {
+    DEBUG ((EFI_D_ERROR, "[ext4] dirent size %lu too small (compared to %lu)\n", Dirent->rec_len, RequiredSize));
     return FALSE;
   }
 
   // Dirent sizes need to be 4 byte aligned
-  if (Dirent->size % 4) {
+  if (Dirent->rec_len % 4) {
     return FALSE;
   }
 
@@ -385,11 +385,11 @@ Ext4ReadDir (
       goto Out;
     }
 
-    DEBUG ((EFI_D_INFO, "[ext4] dirent size %lu\n", Entry.size));
+    DEBUG ((EFI_D_INFO, "[ext4] dirent size %lu\n", Entry.rec_len));
 
     if (Entry.inode == 0) {
       // When inode = 0, it's unused
-      Offset += Entry.size;
+      Offset += Entry.rec_len;
       continue;
     }
 
@@ -403,7 +403,7 @@ Ext4ReadDir (
 
     // TODO: Is this needed?
     if (!StrCmp (TempFile->FileName, L".") || !StrCmp (TempFile->FileName, L"..")) {
-      Offset += Entry.size;
+      Offset += Entry.rec_len;
       Ext4CloseInternal (TempFile);
       continue;
     }
@@ -414,7 +414,7 @@ Ext4ReadDir (
 
     st = Ext4GetFileInfo (TempFile, Buffer, OutLength);
     if (!EFI_ERROR (st)) {
-      File->Position = Offset + Entry.size;
+      File->Position = Offset + Entry.rec_len;
     }
 
     Ext4CloseInternal (TempFile);
