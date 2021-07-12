@@ -333,7 +333,8 @@ Ext4FileCreateTime (
 
    @retval BOOLEAN   True if checksum if correct, false if there is corruption.
 */
-BOOLEAN Ext4CheckInodeChecksum (
+BOOLEAN
+Ext4CheckInodeChecksum (
   IN CONST EXT4_PARTITION *Partition,
   IN CONST EXT4_INODE *Inode,
   IN EXT4_INO_NR InodeNum
@@ -341,6 +342,10 @@ BOOLEAN Ext4CheckInodeChecksum (
 {
   UINT32  Csum;
   UINT32  DiskCsum;
+
+  if(!Ext4HasMetadataCsum (Partition)) {
+    return TRUE;
+  }
 
   Csum = Ext4CalculateInodeChecksum (Partition, Inode, InodeNum);
 
@@ -353,9 +358,9 @@ BOOLEAN Ext4CheckInodeChecksum (
     Csum &= 0xffff;
   }
 
-#if 0
-  DEBUG((EFI_D_INFO, "[ext4] Inode %d csum %x vs %x\n", InodeNum, Csum, DiskCsum));
-#endif
+ #if 0
+    DEBUG ((EFI_D_INFO, "[ext4] Inode %d csum %x vs %x\n", InodeNum, Csum, DiskCsum));
+ #endif
 
   return Csum == DiskCsum;
 }

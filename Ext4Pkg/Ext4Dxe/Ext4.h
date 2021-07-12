@@ -31,6 +31,7 @@
 #include <Library/OrderedCollectionLib.h>
 
 #include "Ext4Disk.h"
+#include "ProcessorBind.h"
 
 #define EXT4_NAME_MAX  255
 
@@ -77,6 +78,10 @@ typedef struct _Ext4_PARTITION {
   EXT4_FILE                          *Root;
 
   UINT32                             InitialSeed;
+
+  // log2(Entries) = log2(BlockSize/4)
+  // Needed for indirect block operations.
+  UINT16                             EntryShift;
 } EXT4_PARTITION;
 
 /**
@@ -802,5 +807,90 @@ Ext4CalculateBlockGroupDescChecksum (
   IN CONST EXT4_BLOCK_GROUP_DESC *BlockGroupDesc,
   IN UINT32 BlockGroupNum
   );
+
+/**
+   Verifies the existance of a particular RO compat feature set.
+   @param[in]      Partition           Pointer to the opened EXT4 partition.
+   @param[in]      RoCompatFeatureSet  Feature set to test.
+
+   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+*/
+STATIC inline
+BOOLEAN
+Ext4HasRoCompat (
+  IN CONST EXT4_PARTITION *Partition,
+  IN UINT32 RoCompatFeatureSet
+  )
+{
+  return (Partition->FeaturesRoCompat & RoCompatFeatureSet) == RoCompatFeatureSet;
+}
+
+/**
+   Verifies the existance of a particular compat feature set.
+   @param[in]      Partition           Pointer to the opened EXT4 partition.
+   @param[in]      RoCompatFeatureSet  Feature set to test.
+
+   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+*/
+STATIC inline
+BOOLEAN
+Ext4HasCompat (
+  IN CONST EXT4_PARTITION *Partition,
+  IN UINT32 CompatFeatureSet
+  )
+{
+  return (Partition->FeaturesCompat & CompatFeatureSet) == CompatFeatureSet;
+}
+
+/**
+   Verifies the existance of a particular compat feature set.
+   @param[in]      Partition           Pointer to the opened EXT4 partition.
+   @param[in]      RoCompatFeatureSet  Feature set to test.
+
+   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+*/
+STATIC inline
+BOOLEAN
+Ext4HasIncompat (
+  IN CONST EXT4_PARTITION *Partition,
+  IN UINT32 IncompatFeatureSet
+  )
+{
+  return (Partition->FeaturesIncompat & IncompatFeatureSet) == IncompatFeatureSet;
+}
+
+// Note: Might be a good idea to provide generic Ext4Has$feature() through macros.
+
+/**
+   Checks if metadata_csum is enabled on the partition.
+   @param[in]      Partition           Pointer to the opened EXT4 partition.
+   @param[in]      RoCompatFeatureSet  Feature set to test.
+
+   @retval BOOLEAN        TRUE if the feature is supported
+*/
+STATIC inline
+BOOLEAN
+Ext4HasMetadataCsum (
+  IN CONST EXT4_PARTITION *Partition
+  )
+{
+  return Ext4HasRoCompat (Partition, EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+}
+
+/**
+   Checks if gdt_csum is enabled on the partition.
+   @param[in]      Partition           Pointer to the opened EXT4 partition.
+   @param[in]      RoCompatFeatureSet  Feature set to test.
+
+   @retval BOOLEAN        TRUE if the feature is supported
+*/
+STATIC inline
+BOOLEAN
+Ext4HasGdtCsum (
+  IN CONST EXT4_PARTITION *Partition
+  )
+{
+  return Ext4HasRoCompat (Partition, EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+}
 
 #endif

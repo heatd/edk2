@@ -71,6 +71,10 @@ Ext4VerifySuperblockChecksum (
   EXT4_PARTITION *Partition, CONST EXT4_SUPERBLOCK *sb
   )
 {
+  if(!Ext4HasMetadataCsum (Partition)) {
+    return TRUE;
+  }
+
   return sb->s_checksum == Ext4CalculateSuperblockChecksum (Partition, sb);
 }
 
@@ -86,8 +90,8 @@ Ext4OpenSuperblock (
   OUT EXT4_PARTITION *Partition
   )
 {
-  UINT32      Index;
-  EFI_STATUS  Status;
+  UINT32           Index;
+  EFI_STATUS       Status;
   EXT4_SUPERBLOCK  *Sb;
 
   Status = Ext4ReadDiskIo (
@@ -100,7 +104,7 @@ Ext4OpenSuperblock (
   if (EFI_ERROR (Status)) {
     return Status;
   }
-  
+
   Sb = &Partition->SuperBlock;
 
   if (!Ext4SuperblockValidate (Sb)) {
@@ -206,13 +210,13 @@ Ext4OpenSuperblock (
   }
 
   for (Index = 0; Index < Partition->NumberBlockGroups; Index++) {
-    EXT4_BLOCK_GROUP_DESC *Desc = Ext4GetBlockGroupDesc(Partition, Index);
-    if (!Ext4VerifyBlockGroupDescChecksum(Partition, Desc, Index)) {
+    EXT4_BLOCK_GROUP_DESC  *Desc = Ext4GetBlockGroupDesc (Partition, Index);
+    if (!Ext4VerifyBlockGroupDescChecksum (Partition, Desc, Index)) {
       DEBUG ((EFI_D_INFO, "[ext4] Block group descriptor %u has an invalid checksum\n", Index));
       return EFI_VOLUME_CORRUPTED;
     }
   }
-  
+
   // Note that the cast below is completely safe, because EXT4_FILE is a specialisation of EFI_FILE_PROTOCOL
   Status = Ext4OpenVolume (&Partition->Interface, (EFI_FILE_PROTOCOL **)&Partition->Root);
 
@@ -235,7 +239,7 @@ Ext4CalculateChecksum (
   IN UINT32 InitialValue
   )
 {
-  if(!(Partition->FeaturesRoCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+  if(!Ext4HasMetadataCsum (Partition)) {
     return 0;
   }
 

@@ -170,6 +170,10 @@ Ext4VerifyBlockGroupDescChecksum (
   IN UINT32 BlockGroupNum
   )
 {
+  if(!Ext4HasMetadataCsum (Partition) && !Ext4HasGdtCsum (Partition)) {
+    return TRUE;
+  }
+
   return Ext4CalculateBlockGroupDescChecksum (Partition, BlockGroupDesc, BlockGroupNum) == BlockGroupDesc->bg_checksum;
 }
 

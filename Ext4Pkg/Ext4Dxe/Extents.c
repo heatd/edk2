@@ -306,7 +306,7 @@ Ext4GetExtent (
     }
 
     if(!Ext4CheckExtentChecksum (ExtHeader, File)) {
-      DEBUG((EFI_D_ERROR, "[ext4] Invalid extent checksum\n"));
+      DEBUG ((EFI_D_ERROR, "[ext4] Invalid extent checksum\n"));
       FreePool (Buffer);
       return EFI_VOLUME_CORRUPTED;
     }
@@ -555,16 +555,16 @@ Ext4CalculateExtentChecksum (
   IN CONST EXT4_FILE *File
   )
 {
-  UINT32 Csum;
-  EXT4_PARTITION *Partition;
-  EXT4_INODE *Inode;
+  UINT32          Csum;
+  EXT4_PARTITION  *Partition;
+  EXT4_INODE      *Inode;
 
   Partition = File->Partition;
-  Inode = File->Inode;
+  Inode     = File->Inode;
 
-  Csum = Ext4CalculateChecksum(Partition, &File->InodeNum, sizeof(EXT4_INO_NR), Partition->InitialSeed);
-  Csum = Ext4CalculateChecksum(Partition, &Inode->i_generation, sizeof(Inode->i_generation), Csum);
-  Csum = Ext4CalculateChecksum(Partition, ExtHeader, Partition->BlockSize - sizeof(EXT4_EXTENT_TAIL), Csum);
+  Csum = Ext4CalculateChecksum (Partition, &File->InodeNum, sizeof (EXT4_INO_NR), Partition->InitialSeed);
+  Csum = Ext4CalculateChecksum (Partition, &Inode->i_generation, sizeof (Inode->i_generation), Csum);
+  Csum = Ext4CalculateChecksum (Partition, ExtHeader, Partition->BlockSize - sizeof (EXT4_EXTENT_TAIL), Csum);
 
   return Csum;
 }
@@ -586,6 +586,10 @@ Ext4CheckExtentChecksum (
   EXT4_EXTENT_TAIL  *Tail;
 
   Partition = File->Partition;
+
+  if(!Ext4HasMetadataCsum (Partition)) {
+    return TRUE;
+  }
 
   Tail = (EXT4_EXTENT_TAIL *)((CONST CHAR8 *)ExtHeader + (Partition->BlockSize - 4));
 
