@@ -1,5 +1,5 @@
 /**
- * @file CRC32c calculation routines.
+ * @file CRC16 calculation routines.
  *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
  *
