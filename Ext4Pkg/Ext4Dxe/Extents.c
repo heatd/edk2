@@ -9,6 +9,32 @@
 #include "Ext4.h"
 
 /**
+   Checks if the checksum of the extent data block is correct.
+   @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
+   @param[in]      File          Pointer to the file.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+BOOLEAN
+Ext4CheckExtentChecksum (
+  IN CONST EXT4_EXTENT_HEADER *ExtHeader,
+  IN CONST EXT4_FILE *File
+  );
+
+/**
+   Calculates the checksum of the extent data block.
+   @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
+   @param[in]      File          Pointer to the file.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+UINT32
+Ext4CalculateExtentChecksum (
+  IN CONST EXT4_EXTENT_HEADER *ExtHeader,
+  IN CONST EXT4_FILE *File
+  );
+
+/**
    Caches a range of extents, by allocating pool memory for each extent and adding it to the tree.
 
    @param[in]      File        Pointer to the open file.
@@ -198,11 +224,16 @@ Ext4GetExtent (
   IN EXT4_PARTITION *Partition, IN EXT4_FILE *File, IN EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
   )
 {
-  EXT4_INODE  *Inode = File->Inode;
+  EXT4_INODE  *Inode;
 
   DEBUG ((EFI_D_INFO, "[ext4] Looking up extent for block %lu\n", LogicalBlock));
-  VOID         *Buffer = NULL;
-  EXT4_EXTENT  *Ext    = NULL;
+  VOID         *Buffer;
+  EXT4_EXTENT  *Ext;
+  UINT32       CurrentDepth;
+
+  Inode  = File->Inode;
+  Ext    = NULL;
+  Buffer = NULL;
 
   // ext4 does not have support for logical block numbers bigger than UINT32_MAX
   // TODO: Is there UINT32_MAX in Tianocore?
@@ -238,7 +269,10 @@ Ext4GetExtent (
     return EFI_VOLUME_CORRUPTED;
   }
 
+  CurrentDepth = ExtHeader->eh_depth;
+
   while(ExtHeader->eh_depth != 0) {
+    CurrentDepth--;
     // While depth != 0, we're traversing the tree itself and not any leaves
     // As such, every entry is an EXT4_EXTENT_INDEX entry
     // Note: Entries after the extent header, either index or actual extent, are always sorted.
@@ -263,6 +297,17 @@ Ext4GetExtent (
     ExtHeader = Buffer;
 
     if(!Ext4ExtentHeaderValid (ExtHeader)) {
+      FreePool (Buffer);
+      return EFI_VOLUME_CORRUPTED;
+    }
+
+    if(!Ext4CheckExtentChecksum (ExtHeader, File)) {
+      DEBUG((EFI_D_ERROR, "[ext4] Invalid extent checksum\n"));
+      FreePool (Buffer);
+      return EFI_VOLUME_CORRUPTED;
+    }
+
+    if(ExtHeader->eh_depth != CurrentDepth) {
       FreePool (Buffer);
       return EFI_VOLUME_CORRUPTED;
     }
@@ -491,4 +536,54 @@ Ext4GetExtentFromMap (
   }
 
   return OrderedCollectionUserStruct (Entry);
+}
+
+/**
+   Calculates the checksum of the extent data block.
+   @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
+   @param[in]      File          Pointer to the file.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+UINT32
+Ext4CalculateExtentChecksum (
+  IN CONST EXT4_EXTENT_HEADER *ExtHeader,
+  IN CONST EXT4_FILE *File
+  )
+{
+  UINT32 Csum;
+  EXT4_PARTITION *Partition;
+  EXT4_INODE *Inode;
+
+  Partition = File->Partition;
+  Inode = File->Inode;
+
+  Csum = Ext4CalculateChecksum(Partition, &File->InodeNum, sizeof(EXT4_INO_NR), Partition->InitialSeed);
+  Csum = Ext4CalculateChecksum(Partition, &Inode->i_generation, sizeof(Inode->i_generation), Csum);
+  Csum = Ext4CalculateChecksum(Partition, ExtHeader, Partition->BlockSize - sizeof(EXT4_EXTENT_TAIL), Csum);
+
+  return Csum;
+}
+
+/**
+   Checks if the checksum of the extent data block is correct.
+   @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
+   @param[in]      File          Pointer to the file.
+
+   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+*/
+BOOLEAN
+Ext4CheckExtentChecksum (
+  IN CONST EXT4_EXTENT_HEADER *ExtHeader,
+  IN CONST EXT4_FILE *File
+  )
+{
+  EXT4_PARTITION    *Partition;
+  EXT4_EXTENT_TAIL  *Tail;
+
+  Partition = File->Partition;
+
+  Tail = (EXT4_EXTENT_TAIL *)((CONST CHAR8 *)ExtHeader + (Partition->BlockSize - 4));
+
+  return Tail->eb_checksum == Ext4CalculateExtentChecksum (ExtHeader, File);
 }
