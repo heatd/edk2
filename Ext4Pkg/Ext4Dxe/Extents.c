@@ -235,6 +235,10 @@ Ext4GetExtent (
   Ext    = NULL;
   Buffer = NULL;
 
+  if (!(Inode->i_flags & EXT4_EXTENTS_FL)) {
+    return EFI_UNSUPPORTED;
+  }
+
   // ext4 does not have support for logical block numbers bigger than UINT32_MAX
   // TODO: Is there UINT32_MAX in Tianocore?
   if (LogicalBlock > (UINT32)- 1) {

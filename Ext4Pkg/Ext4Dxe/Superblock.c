@@ -7,7 +7,6 @@
  */
 
 #include "Ext4.h"
-#include "Uefi/UefiBaseType.h"
 
 STATIC CONST UINT32  supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
 
