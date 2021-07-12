@@ -2,6 +2,7 @@
  * @file Unicode collation routines
  *
  * Copyright (c) 2021 Pedro Falcato All rights reserved.
+ * Copyright (c) 2005 - 2017, Intel Corporation. All rights reserved.
  *
  *  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
@@ -14,7 +15,7 @@
 
 #include <Protocol/UnicodeCollation.h>
 
-STATIC EFI_UNICODE_COLLATION_PROTOCOL  *UnicodeCollationInterface = NULL;
+STATIC EFI_UNICODE_COLLATION_PROTOCOL  *gUnicodeCollationInterface = NULL;
 
 /*
  * Note: This code is heavily based on FatPkg's Unicode collation, since they seem to know what
@@ -33,38 +34,39 @@ Ext4InitialiseUnicodeCollationInternal (
   UINTN                           NumHandles;
   EFI_HANDLE                      *Handles;
   EFI_UNICODE_COLLATION_PROTOCOL  *Uci;
-  BOOLEAN                         Iso639Language = (BOOLEAN)(ProtocolGuid == &gEfiUnicodeCollationProtocolGuid);
+  BOOLEAN                         Iso639Language;
   CHAR8                           *Language;
-  EFI_STATUS                      RetStatus = EFI_UNSUPPORTED;
+  EFI_STATUS                      RetStatus;
+  EFI_STATUS                      Status;
 
+  Iso639Language = (BOOLEAN)(ProtocolGuid == &gEfiUnicodeCollationProtocolGuid);
+  RetStatus = EFI_UNSUPPORTED;
   GetEfiGlobalVariable2 (VariableName, (VOID **)&Language, NULL);
 
-  EFI_STATUS  st;
-
-  st = gBS->LocateHandleBuffer (
-              ByProtocol,
-              ProtocolGuid,
-              NULL,
-              &NumHandles,
-              &Handles
-              );
-  if (EFI_ERROR (st)) {
-    return st;
+  Status = gBS->LocateHandleBuffer (
+                  ByProtocol,
+                  ProtocolGuid,
+                  NULL,
+                  &NumHandles,
+                  &Handles
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
   }
 
   // Note: FatPkg also doesn't close unneeded protocols.
   // This looks like a leak but I'm likely wrong.
   for(UINTN i = 0; i < NumHandles; i++) {
-    st = gBS->OpenProtocol (
-                Handles[i],
-                ProtocolGuid,
-                (VOID **)&Uci,
-                DriverHandle,
-                NULL,
-                EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                );
+    Status = gBS->OpenProtocol (
+                    Handles[i],
+                    ProtocolGuid,
+                    (VOID **)&Uci,
+                    DriverHandle,
+                    NULL,
+                    EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                    );
 
-    if(EFI_ERROR (st)) {
+    if(EFI_ERROR (Status)) {
       continue;
     }
 
@@ -77,7 +79,7 @@ Ext4InitialiseUnicodeCollationInternal (
                              );
     if (BestLanguage != NULL) {
       FreePool (BestLanguage);
-      UnicodeCollationInterface = Uci;
+      gUnicodeCollationInterface = Uci;
       RetStatus = EFI_SUCCESS;
       break;
     }
@@ -151,5 +153,5 @@ Ext4StrCmpInsensitive (
   IN CHAR16                                 *Str2
   )
 {
-  return UnicodeCollationInterface->StriColl (UnicodeCollationInterface, Str1, Str2);
+  return gUnicodeCollationInterface->StriColl (gUnicodeCollationInterface, Str1, Str2);
 }
