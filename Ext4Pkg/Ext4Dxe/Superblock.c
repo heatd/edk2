@@ -249,5 +249,6 @@ Ext4CalculateChecksum (
       return ~CalculateCrc32c(Buffer, Length, ~InitialValue);
     default:
       UNREACHABLE ();
+      return 0;
   }
 }
