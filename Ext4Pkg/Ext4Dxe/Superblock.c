@@ -128,6 +128,11 @@ Ext4OpenSuperblock (
     return EFI_UNSUPPORTED;
   }
 
+  // This should be removed once we add ext2/3 support in the future.
+  if ((Partition->FeaturesIncompat & EXT4_FEATURE_INCOMPAT_EXTENTS) == 0) {
+    return EFI_UNSUPPORTED;
+  }
+
   // At the time of writing, it's the only supported checksum.
   if (Partition->FeaturesCompat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM &&
       Sb->s_checksum_type != EXT4_CHECKSUM_CRC32C) {
