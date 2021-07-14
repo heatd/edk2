@@ -1,19 +1,19 @@
 /**
- * @file Extent related routines
- *
-  * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Extent related routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 /**
    Checks if the checksum of the extent data block is correct.
    @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
    @param[in]      File          Pointer to the file.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if the checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4CheckExtentChecksum (
@@ -26,7 +26,7 @@ Ext4CheckExtentChecksum (
    @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
    @param[in]      File          Pointer to the file.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateExtentChecksum (
@@ -40,12 +40,12 @@ Ext4CalculateExtentChecksum (
    @param[in]      File        Pointer to the open file.
    @param[in]      Extents     Pointer to an array of extents.
    @param[in]      NumberExtents Length of the array.
-
-   @retval none
 */
 VOID
 Ext4CacheExtents (
-  IN EXT4_FILE *File, IN CONST EXT4_EXTENT *Extents, IN UINT16 NumberExtents
+  IN EXT4_FILE *File,
+  IN CONST EXT4_EXTENT *Extents,
+  IN UINT16 NumberExtents
   );
 
 /**
@@ -54,19 +54,20 @@ Ext4CacheExtents (
    @param[in]      File          Pointer to the open file.
    @param[in]      Block         Block we want to grab.
 
-   @retval EXT4_EXTENT *         Pointer to the extent, or NULL if it was not found.
+   @return Pointer to the extent, or NULL if it was not found.
 */
 EXT4_EXTENT *
 Ext4GetExtentFromMap (
-  IN EXT4_FILE *File, UINT32 Block
+  IN EXT4_FILE *File,
+  IN UINT32 Block
   );
 
 /**
    Retrieves the pointer to the top of the extent tree.
    @param[in]      Inode         Pointer to the inode structure.
 
-   @retval EXT4_EXTENT_HEADER    Pointer to an EXT4_EXTENT_HEADER. This pointer is inside
-                                 the inode and must not be freed.
+   @return Pointer to an EXT4_EXTENT_HEADER. This pointer is inside
+           the inode and must not be freed.
 */
 STATIC
 EXT4_EXTENT_HEADER *
@@ -81,7 +82,7 @@ Ext4GetInoExtentHeader (
    Checks if an extent header is valid.
    @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
 
-   @retval BOOLEAN    TRUE if valid, FALSE if not.
+   @return TRUE if valid, FALSE if not.
 */
 STATIC
 BOOLEAN
@@ -119,17 +120,21 @@ Ext4ExtentHeaderValid (
    @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
    @param[in]      LogicalBlock   Block that will be searched
 
-   @retval EXT4_EXTENT_INDEX*     Pointer to the found EXT4_EXTENT_INDEX.
+   @return Pointer to the found EXT4_EXTENT_INDEX.
 */
 STATIC
 EXT4_EXTENT_INDEX *
 Ext4BinsearchExtentIndex (
-  IN EXT4_EXTENT_HEADER *Header, IN EXT4_BLOCK_NR LogicalBlock
+  IN EXT4_EXTENT_HEADER *Header,
+  IN EXT4_BLOCK_NR LogicalBlock
   )
 {
-  EXT4_EXTENT_INDEX  *l = ((EXT4_EXTENT_INDEX *)(Header + 1)) + 1;
-  EXT4_EXTENT_INDEX  *r = ((EXT4_EXTENT_INDEX *)(Header + 1)) + Header->eh_entries - 1;
+  EXT4_EXTENT_INDEX  *l;
+  EXT4_EXTENT_INDEX  *r;
   EXT4_EXTENT_INDEX  *m;
+
+  l = ((EXT4_EXTENT_INDEX *)(Header + 1)) + 1;
+  r = ((EXT4_EXTENT_INDEX *)(Header + 1)) + Header->eh_entries - 1;
 
   // Perform a mostly-standard binary search on the array
   // This works very nicely because the extents arrays are always sorted.
@@ -154,21 +159,23 @@ Ext4BinsearchExtentIndex (
    @param[in]      Header         Pointer to the EXT4_EXTENT_HEADER structure.
    @param[in]      LogicalBlock   Block that will be searched
 
-   @retval EXT4_EXTENT_INDEX*     Pointer to the found EXT4_EXTENT_INDEX.
-           NULL                   Array is empty.
-                                  Note: The caller must check if the logical block
-                                  is actually mapped under the given extent.
+   @return Pointer to the found EXT4_EXTENT_INDEX, else NULL if the array is empty.
+           Note: The caller must check if the logical block
+           is actually mapped under the given extent.
 */
 STATIC
 EXT4_EXTENT *
 Ext4BinsearchExtentExt (
-  IN EXT4_EXTENT_HEADER *Header, IN EXT4_BLOCK_NR LogicalBlock
+  IN EXT4_EXTENT_HEADER *Header,
+  IN EXT4_BLOCK_NR LogicalBlock
   )
 {
-  EXT4_EXTENT  *l = ((EXT4_EXTENT *)(Header + 1)) + 1;
-  EXT4_EXTENT  *r = ((EXT4_EXTENT *)(Header + 1)) + Header->eh_entries - 1;
+  EXT4_EXTENT  *l;
+  EXT4_EXTENT  *r;
   EXT4_EXTENT  *m;
 
+  l = ((EXT4_EXTENT *)(Header + 1)) + 1;
+  r = ((EXT4_EXTENT *)(Header + 1)) + Header->eh_entries - 1;
   // Perform a mostly-standard binary search on the array
   // This works very nicely because the extents arrays are always sorted.
 
@@ -195,7 +202,7 @@ Ext4BinsearchExtentExt (
 
    @param[in]      Index          Pointer to the EXT4_EXTENT_INDEX structure.
 
-   @retval EXT4_BLOCK_NR          Block number of the leaf node.
+   @return Block number of the leaf node.
 */
 STATIC
 EXT4_BLOCK_NR
@@ -216,24 +223,28 @@ STATIC UINTN  GetExtentCacheHits = 0;
    @param[in]      LogicalBlock  Block number which the returned extent must cover.
    @param[out]     Extent        Pointer to the output buffer, where the extent will be copied to.
 
-   @retval EFI_STATUS         Status of the retrieval operation.
-           EFI_NO_MAPPING     Block has no mapping.
+   @retval EFI_SUCCESS        Retrieval was succesful.
+   @retval EFI_NO_MAPPING     Block has no mapping.
 */
 EFI_STATUS
 Ext4GetExtent (
-  IN EXT4_PARTITION *Partition, IN EXT4_FILE *File, IN EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
+  IN  EXT4_PARTITION *Partition,
+  IN  EXT4_FILE *File,
+  IN  EXT4_BLOCK_NR LogicalBlock,
+  OUT EXT4_EXTENT *Extent
   )
 {
-  EXT4_INODE  *Inode;
-
-  DEBUG ((EFI_D_INFO, "[ext4] Looking up extent for block %lu\n", LogicalBlock));
-  VOID         *Buffer;
-  EXT4_EXTENT  *Ext;
-  UINT32       CurrentDepth;
+  EXT4_INODE          *Inode;
+  VOID                *Buffer;
+  EXT4_EXTENT         *Ext;
+  UINT32              CurrentDepth;
+  EXT4_EXTENT_HEADER  *ExtHeader;
 
   Inode  = File->Inode;
   Ext    = NULL;
   Buffer = NULL;
+
+  DEBUG ((EFI_D_INFO, "[ext4] Looking up extent for block %lu\n", LogicalBlock));
 
   if (!(Inode->i_flags & EXT4_EXTENTS_FL)) {
     return EFI_UNSUPPORTED;
@@ -267,7 +278,7 @@ Ext4GetExtent (
 
   // Slow path, we'll need to read from disk and (try to) cache those extents.
 
-  EXT4_EXTENT_HEADER  *ExtHeader = Ext4GetInoExtentHeader (Inode);
+  ExtHeader = Ext4GetInoExtentHeader (Inode);
 
   if(!Ext4ExtentHeaderValid (ExtHeader)) {
     return EFI_VOLUME_CORRUPTED;
@@ -276,6 +287,9 @@ Ext4GetExtent (
   CurrentDepth = ExtHeader->eh_depth;
 
   while(ExtHeader->eh_depth != 0) {
+    EXT4_EXTENT_INDEX  *Index;
+    EFI_STATUS         Status;
+
     CurrentDepth--;
     // While depth != 0, we're traversing the tree itself and not any leaves
     // As such, every entry is an EXT4_EXTENT_INDEX entry
@@ -283,19 +297,21 @@ Ext4GetExtent (
     // Therefore, we can use binary search, and it's actually the standard for doing so
     // (see FreeBSD).
 
-    EXT4_EXTENT_INDEX  *Index = Ext4BinsearchExtentIndex (ExtHeader, LogicalBlock);
+    Index = Ext4BinsearchExtentIndex (ExtHeader, LogicalBlock);
 
     if(Buffer == NULL) {
       Buffer = AllocatePool (Partition->BlockSize);
       if(Buffer == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
+    }
 
-      EFI_STATUS  st;
-      if((st = Ext4ReadBlocks (Partition, Buffer, 1, Ext4ExtentIdxLeafBlock (Index))) != EFI_SUCCESS) {
-        FreePool (Buffer);
-        return st;
-      }
+    // Read the leaf block onto the previously-allocated buffer.
+
+    Status = Ext4ReadBlocks (Partition, Buffer, 1, Ext4ExtentIdxLeafBlock (Index));
+    if(EFI_ERROR (Status)) {
+      FreePool (Buffer);
+      return Status;
     }
 
     ExtHeader = Buffer;
@@ -426,7 +442,7 @@ Ext4ExtentsMapKeyCompare (
 
    @param[in]      File        Pointer to the open file.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4InitExtentsMap (
@@ -445,8 +461,6 @@ Ext4InitExtentsMap (
    Frees the extents map, deleting every extent stored.
 
    @param[in]      File        Pointer to the open file.
-
-   @retval none
 */
 VOID
 Ext4FreeExtentsMap (
@@ -476,33 +490,36 @@ Ext4FreeExtentsMap (
    @param[in]      File        Pointer to the open file.
    @param[in]      Extents     Pointer to an array of extents.
    @param[in]      NumberExtents Length of the array.
-
-   @retval none
 */
 VOID
 Ext4CacheExtents (
   IN EXT4_FILE *File, IN CONST EXT4_EXTENT *Extents, IN UINT16 NumberExtents
   )
 {
+  UINT16  i;
+
   /* Note that any out of memory condition might mean we don't get to cache a whole leaf of extents
    * in which case, future insertions might fail.
    */
 
-  for(UINT16 i = 0; i < NumberExtents; i++, Extents++) {
-    EXT4_EXTENT  *Extent = AllocatePool (sizeof (EXT4_EXTENT));
+  for(i = 0; i < NumberExtents; i++, Extents++) {
+    EXT4_EXTENT  *Extent;
+    EFI_STATUS   Status;
+
+    Extent = AllocatePool (sizeof (EXT4_EXTENT));
 
     if (Extent == NULL) {
       return;
     }
 
     CopyMem (Extent, Extents, sizeof (EXT4_EXTENT));
-    EFI_STATUS  st = OrderedCollectionInsert (File->ExtentsMap, NULL, Extent);
+    Status = OrderedCollectionInsert (File->ExtentsMap, NULL, Extent);
 
     // EFI_ALREADY_STARTED = already exists in the tree.
-    if (EFI_ERROR (st)) {
+    if (EFI_ERROR (Status)) {
       FreePool (Extent);
 
-      if(st == EFI_ALREADY_STARTED) {
+      if(Status == EFI_ALREADY_STARTED) {
         continue;
       }
 
@@ -526,14 +543,17 @@ Ext4CacheExtents (
    @param[in]      File          Pointer to the open file.
    @param[in]      Block         Block we want to grab.
 
-   @retval EXT4_EXTENT *         Pointer to the extent, or NULL if it was not found.
+   @return Pointer to the extent, or NULL if it was not found.
 */
 EXT4_EXTENT *
 Ext4GetExtentFromMap (
-  IN EXT4_FILE *File, UINT32 Block
+  IN EXT4_FILE *File,
+  IN UINT32 Block
   )
 {
-  ORDERED_COLLECTION_ENTRY  *Entry = OrderedCollectionFind (File->ExtentsMap, (CONST VOID *)(UINTN)Block);
+  ORDERED_COLLECTION_ENTRY  *Entry;
+
+  Entry = OrderedCollectionFind (File->ExtentsMap, (CONST VOID *)(UINTN)Block);
 
   if (Entry == NULL) {
     return NULL;
@@ -547,7 +567,7 @@ Ext4GetExtentFromMap (
    @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
    @param[in]      File          Pointer to the file.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateExtentChecksum (
@@ -574,7 +594,7 @@ Ext4CalculateExtentChecksum (
    @param[in]      ExtHeader     Pointer to the EXT4_EXTENT_HEADER.
    @param[in]      File          Pointer to the file.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if the checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4CheckExtentChecksum (

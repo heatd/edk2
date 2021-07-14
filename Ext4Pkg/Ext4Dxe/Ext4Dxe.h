@@ -1,9 +1,8 @@
 /**
- * @file Common header for the driver
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Common header for the driver
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #ifndef _EXT4_H
@@ -31,7 +30,6 @@
 #include <Library/OrderedCollectionLib.h>
 
 #include "Ext4Disk.h"
-#include "ProcessorBind.h"
 
 #define EXT4_NAME_MAX  255
 
@@ -45,12 +43,15 @@
    @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported.
    @param[in]        BlockIo          Pointer to an EFI_BLOCK_IO_PROTOCOL.
 
-   @retval EFI_STATUS    EFI_SUCCESS if the opening was successful.
+   @retval EFI_SUCCESS      The opening was successful.
+           !EFI_SUCCESS     Opening failed.
  */
 EFI_STATUS
 Ext4OpenPartition (
-  IN EFI_HANDLE DeviceHandle, IN EFI_DISK_IO_PROTOCOL *DiskIo,
-  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *DiskIo2, IN EFI_BLOCK_IO_PROTOCOL *BlockIo
+  IN EFI_HANDLE DeviceHandle,
+  IN EFI_DISK_IO_PROTOCOL *DiskIo,
+  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *DiskIo2,
+  IN EFI_BLOCK_IO_PROTOCOL *BlockIo
   );
 
 typedef struct _Ext4File EXT4_FILE;
@@ -88,7 +89,7 @@ typedef struct _Ext4_PARTITION {
    Opens and parses the superblock.
 
    @param[out]     Partition Partition structure to fill with filesystem details.
-   @retval EFI_STATUS        EFI_SUCCESS if parsing was succesful and the partition is a
+   @retval EFI_SUCCESS       Parsing was succesful and the partition is a
                              valid ext4 partition.
  */
 EFI_STATUS
@@ -100,7 +101,7 @@ Ext4OpenSuperblock (
    Retrieves the EFI_BLOCK_IO_PROTOCOL of the partition.
 
    @param[in]     Partition  Pointer to the opened ext4 partition.
-   @retval EFI_BLOCK_IO_PROTOCOL  Retrieved Block IO protocol.
+   @return The Block IO protocol associated with the partition.
  */
 STATIC inline
 EFI_BLOCK_IO_PROTOCOL *
@@ -115,7 +116,7 @@ Ext4BlockIo (
    Retrieves the EFI_DISK_IO_PROTOCOL of the partition.
 
    @param[in]     Partition  Pointer to the opened ext4 partition.
-   @retval EFI_DISK_IO_PROTOCOL  Retrieved Disk IO protocol.
+   @return The Disk IO protocol associated with the partition.
  */
 STATIC inline
 EFI_DISK_IO_PROTOCOL *
@@ -130,7 +131,8 @@ Ext4DiskIo (
    Retrieves the EFI_DISK_IO2_PROTOCOL of the partition.
 
    @param[in]     Partition  Pointer to the opened ext4 partition.
-   @retval EFI_DISK_IO2_PROTOCOL  Retrieved Disk IO2 protocol, or NULL if not supported.
+   @return The Disk IO 2 protocol associated with the partition, or NULL if
+           not supported.
  */
 STATIC inline
 EFI_DISK_IO2_PROTOCOL *
@@ -145,7 +147,7 @@ Ext4DiskIo2 (
    Retrieves the media ID of the partition.
 
    @param[in]     Partition  Pointer to the opened ext4 partition.
-   @retval UINT32            Retrieved media ID.
+   @return The media ID associated with the partition.
  */
 STATIC inline
 UINT32
@@ -164,11 +166,14 @@ Ext4MediaId (
    @param[in]  Length         Length of the destination buffer.
    @param[in]  Offset         Offset, in bytes, of the location to read.
 
-   @retval EFI_STATUS         Success status of the disk read.
+   @return Success status of the disk read.
  */
 EFI_STATUS
 Ext4ReadDiskIo (
-  IN EXT4_PARTITION *Partition, OUT VOID *Buffer, IN UINTN Length, IN UINT64 Offset
+  IN EXT4_PARTITION *Partition,
+  OUT VOID *Buffer,
+  IN UINTN Length,
+  IN UINT64 Offset
   );
 
 /**
@@ -179,11 +184,14 @@ Ext4ReadDiskIo (
    @param[in]  NumberBlocks   Length of the read, in filesystem blocks.
    @param[in]  BlockNumber    Starting block number.
 
-   @retval EFI_STATUS         Success status of the read.
+   @return Success status of the read.
  */
 EFI_STATUS
 Ext4ReadBlocks (
-  IN EXT4_PARTITION *Partition, OUT VOID *Buffer, IN UINTN NumberBlocks, IN EXT4_BLOCK_NR BlockNumber
+  IN  EXT4_PARTITION *Partition,
+  OUT VOID *Buffer,
+  IN  UINTN NumberBlocks,
+  IN  EXT4_BLOCK_NR BlockNumber
   );
 
 /**
@@ -194,12 +202,14 @@ Ext4ReadBlocks (
    @param[in]  NumberBlocks   Length of the read, in filesystem blocks.
    @param[in]  BlockNumber    Starting block number.
 
-   @retval VOID*              Buffer allocated by AllocatePool, or NULL if some part of the process
-                              failed.
+   @return Buffer allocated by AllocatePool, or NULL if some part of the process
+           failed.
  */
 VOID *
 Ext4AllocAndReadBlocks (
-  IN EXT4_PARTITION *Partition, IN UINTN NumberBlocks, IN EXT4_BLOCK_NR BlockNumber
+  IN EXT4_PARTITION *Partition,
+  IN UINTN NumberBlocks,
+  IN EXT4_BLOCK_NR BlockNumber
   );
 
 /**
@@ -207,7 +217,7 @@ Ext4AllocAndReadBlocks (
 
    @param[in]  Partition      Pointer to the opened ext4 partition.
 
-   @retval BOOLEAN            TRUE if EXT4_FEATURE_INCOMPAT_64BIT is enabled.
+   @return TRUE if EXT4_FEATURE_INCOMPAT_64BIT is enabled, else FALSE.
  */
 STATIC inline
 BOOLEAN
@@ -225,12 +235,14 @@ Ext4Is64Bit (
    @param[in]  Low            Low half of the block number.
    @param[in]  High           High half of the block number.
 
-   @retval EXT4_BLOCK_NR      Block number.
+   @return The block number formed by Low, and if 64 bit is enabled, High.
  */
 STATIC inline
 EXT4_BLOCK_NR
 Ext4MakeBlockNumberFromHalfs (
-  IN CONST EXT4_PARTITION *Partition, IN UINT32 Low, IN UINT32 High
+  IN CONST EXT4_PARTITION *Partition,
+  IN UINT32 Low,
+  IN UINT32 High
   )
 {
   // High might have garbage if it's not a 64 bit filesystem
@@ -241,14 +253,15 @@ Ext4MakeBlockNumberFromHalfs (
    Retrieves a block group descriptor of the ext4 filesystem.
 
    @param[in]  Partition      Pointer to the opened ext4 partition.
-   @param[in]  Block group    Block group number.
+   @param[in]  BlockGroup    Block group number.
 
-   @retval EXT4_BLOCK_GROUP_DESC     Fetched block group descriptor.
+   @return A pointer to the block group descriptor.
  */
 STATIC inline
 EXT4_BLOCK_GROUP_DESC *
 Ext4GetBlockGroupDesc (
-  IN EXT4_PARTITION *Partition, IN UINT32 BlockGroup
+  IN EXT4_PARTITION *Partition,
+  IN UINT32 BlockGroup
   )
 {
   // Maybe assert that the block group nr isn't a nonsense number?
@@ -262,11 +275,13 @@ Ext4GetBlockGroupDesc (
    @param[in]    InodeNum   Number of the desired Inode
    @param[out]   OutIno     Pointer to where it will be stored a pointer to the read inode.
 
-   @retval EFI_STATUS       Status of the inode read.
+   @return Status of the inode read.
  */
 EFI_STATUS
 Ext4ReadInode (
-  IN EXT4_PARTITION *Partition, IN EXT4_INO_NR InodeNum, OUT EXT4_INODE **OutIno
+  IN  EXT4_PARTITION *Partition,
+  IN  EXT4_INO_NR InodeNum,
+  OUT EXT4_INODE **OutIno
   );
 
 /**
@@ -275,12 +290,13 @@ Ext4ReadInode (
    @param[in]    Partition  Pointer to the opened partition.
    @param[in]    Block      Block number/number of blocks.
 
-   @retval UINT64       Number of bytes.
+   @return The number of bytes.
  */
 STATIC inline
 UINT64
 Ext4BlockToByteOffset (
-  IN CONST EXT4_PARTITION *Partition, IN EXT4_BLOCK_NR Block
+  IN CONST EXT4_PARTITION *Partition,
+  IN EXT4_BLOCK_NR Block
   )
 {
   return Partition->BlockSize * Block;
@@ -290,16 +306,20 @@ Ext4BlockToByteOffset (
    Reads from an EXT4 inode.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
    @param[in]      File          Pointer to the opened file.
-   @param[in]      Buffer        Pointer to the buffer.
+   @param[out]     Buffer        Pointer to the buffer.
    @param[in]      Offset        Offset of the read.
    @param[in out]  Length        Pointer to the length of the buffer, in bytes.
                                  After a succesful read, it's updated to the number of read bytes.
 
-   @retval EFI_STATUS         Status of the read operation.
+   @return Status of the read operation.
 */
 EFI_STATUS
 Ext4Read (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length
+  IN     EXT4_PARTITION *Partition,
+  IN     EXT4_FILE *File,
+  OUT    VOID *Buffer,
+  IN     UINT64 Offset,
+  IN OUT UINTN *Length
   );
 
 /**
@@ -307,7 +327,7 @@ Ext4Read (
 
    @param[in]    Inode      Pointer to the ext4 inode.
 
-   @retval UINT64          Size of the inode, in bytes.
+   @return The size of the inode, in bytes.
  */
 STATIC inline
 UINT64
@@ -325,12 +345,15 @@ Ext4InodeSize (
    @param[in]      LogicalBlock  Block number which the returned extent must cover.
    @param[out]     Extent        Pointer to the output buffer, where the extent will be copied to.
 
-   @retval EFI_STATUS         Status of the retrieval operation.
-           EFI_NO_MAPPING     Block has no mapping.
+   @retval EFI_SUCCESS        Retrieval was succesful.
+   @retval EFI_NO_MAPPING     Block has no mapping.
 */
 EFI_STATUS
 Ext4GetExtent (
-  IN EXT4_PARTITION *Partition, IN EXT4_FILE *File, IN EXT4_BLOCK_NR LogicalBlock, OUT EXT4_EXTENT *Extent
+  IN  EXT4_PARTITION *Partition,
+  IN  EXT4_FILE *File,
+  IN  EXT4_BLOCK_NR LogicalBlock,
+  OUT EXT4_EXTENT *Extent
   );
 
 struct _Ext4File {
@@ -355,11 +378,13 @@ struct _Ext4File {
    @param[in]      Partition   Pointer to the ext4 partition.
    @param[out]     Result      Pointer to the destination directory entry.
 
-   @retval EFI_STATUS          Result of the operation
+   @return The result of the operation.
 */
 EFI_STATUS
 Ext4RetrieveDirent (
-  EXT4_FILE *Directory, CONST CHAR16 *NameUnicode, EXT4_PARTITION *Partition,
+  IN  EXT4_FILE *Directory,
+  IN  CONST CHAR16 *NameUnicode,
+  IN  EXT4_PARTITION *Partition,
   OUT EXT4_DIR_ENTRY *Result
   );
 
@@ -372,11 +397,14 @@ Ext4RetrieveDirent (
    @param[in]      OpenMode    Mode in which the file is supposed to be open.
    @param[out]     OutFile     Pointer to the newly opened file.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4OpenFile (
-  EXT4_FILE *Directory, CONST CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
+  IN  EXT4_FILE *Directory,
+  IN  CONST CHAR16 *Name,
+  IN  EXT4_PARTITION *Partition,
+  IN  UINT64 OpenMode,
   OUT EXT4_FILE **OutFile
   );
 
@@ -392,27 +420,30 @@ Ext4OpenFile (
 */
 EFI_STATUS
 Ext4OpenDirent (
-  EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_FILE **OutFile,
-  EXT4_DIR_ENTRY *Entry
+  IN  EXT4_PARTITION *Partition,
+  IN  UINT64 OpenMode,
+  OUT EXT4_FILE **OutFile,
+  IN  EXT4_DIR_ENTRY *Entry
   );
 
 /**
    Allocates a zeroed inode structure.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
 
-   @retval EXT4_INODE            Pointer to the allocated structure, from the pool,
-                                 with size Partition->InodeSize.
+   @return Pointer to the allocated structure, from the pool,
+           with size Partition->InodeSize.
 */
 EXT4_INODE *
 Ext4AllocateInode (
-  EXT4_PARTITION *Partition
+  IN EXT4_PARTITION *Partition
   );
 
 // Part of the EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
 
 EFI_STATUS EFIAPI
 Ext4OpenVolume (
-  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition, EFI_FILE_PROTOCOL **Root
+  IN EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Partition,
+  IN EFI_FILE_PROTOCOL **Root
   );
 
 // End of EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
@@ -425,7 +456,8 @@ Ext4OpenVolume (
  */
 VOID
 Ext4SetupFile (
-  IN OUT EXT4_FILE *File, IN EXT4_PARTITION *Partition
+  IN OUT EXT4_FILE *File,
+  IN EXT4_PARTITION *Partition
   );
 
 /**
@@ -433,7 +465,7 @@ Ext4SetupFile (
 
    @param[in]        File        Pointer to the file.
 
-   @retval EFI_STATUS            Status of the closing of the file.
+   @return Status of the closing of the file.
  */
 EFI_STATUS
 Ext4CloseInternal (
@@ -506,7 +538,7 @@ Ext4GetInfo (
    Checks if a file is a directory.
    @param[in]      File          Pointer to the opened file.
 
-   @retval BOOLEAN         TRUE if file is a directory.
+   @return TRUE if file is a directory.
 */
 BOOLEAN
 Ext4FileIsDir (
@@ -517,7 +549,7 @@ Ext4FileIsDir (
    Checks if a file is a regular file.
    @param[in]      File          Pointer to the opened file.
 
-   @retval BOOLEAN         TRUE if file is a regular file.
+   @return BOOLEAN         TRUE if file is a regular file.
 */
 BOOLEAN
 Ext4FileIsReg (
@@ -532,9 +564,9 @@ Ext4FileIsReg (
    @param[in]      File    Pointer to the file trying to be opened.
 
 
-   @retval BOOLEAN         TRUE if file is openable. A file is considered openable if
-                           it's a regular file or a directory, since most other file types
-                           don't make sense under UEFI.
+   @return TRUE if file is openable. A file is considered openable if
+           it's a regular file or a directory, since most other file types
+           don't make sense under UEFI.
 */
 STATIC inline
 BOOLEAN
@@ -553,7 +585,7 @@ Ext4FileIsOpenable (
    Calculates the physical space used by a file.
    @param[in]      File          Pointer to the opened file.
 
-   @retval UINT64         Physical space used by a file, in bytes.
+   @return Physical space used by a file, in bytes.
 */
 UINT64
 Ext4FilePhysicalSpace (
@@ -567,7 +599,8 @@ Ext4FilePhysicalSpace (
 */
 VOID
 Ext4FileATime (
-  IN EXT4_FILE *File, OUT EFI_TIME *Time
+  IN EXT4_FILE *File,
+  OUT EFI_TIME *Time
   );
 
 /**
@@ -577,7 +610,8 @@ Ext4FileATime (
 */
 VOID
 Ext4FileMTime (
-  IN EXT4_FILE *File, OUT EFI_TIME *Time
+  IN EXT4_FILE *File,
+  OUT EFI_TIME *Time
   );
 
 /**
@@ -627,14 +661,15 @@ Ext4StrCmpInsensitive (
    Retrieves the filename of the directory entry and converts it to UTF-16/UCS-2
 
    @param[in]      Entry   Pointer to a EXT4_DIR_ENTRY.
-   @param[in]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
+   @param[out]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
 
    @retval EFI_SUCCESS   Unicode collation was successfully initialised.
    @retval !EFI_SUCCESS  Failure.
 */
 EFI_STATUS
 Ext4GetUcs2DirentName (
-  EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]
+  IN EXT4_DIR_ENTRY *Entry,
+  OUT CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]
   );
 
 /**
@@ -644,11 +679,13 @@ Ext4GetUcs2DirentName (
    @param[out]     Info           Pointer to a EFI_FILE_INFO.
    @param[in out]  BufferSize     Pointer to the buffer size
 
-   @retval EFI_STATUS         Status of the file information request.
+   @return Status of the file information request.
 */
 EFI_STATUS
 Ext4GetFileInfo (
-  IN EXT4_FILE *File, OUT EFI_FILE_INFO *Info, IN OUT UINTN *BufferSize
+  IN     EXT4_FILE *File,
+  OUT    EFI_FILE_INFO *Info,
+  IN OUT UINTN *BufferSize
   );
 
 /**
@@ -661,12 +698,15 @@ Ext4GetFileInfo (
    @param[in out] OutLength    Pointer to a UINTN that contains the length of the buffer,
                                and the length of the actual EFI_FILE_INFO after the call.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4ReadDir (
-  IN EXT4_PARTITION *Partition, IN EXT4_FILE *File,
-  OUT VOID *Buffer, IN UINT64 Offset, IN OUT UINTN *OutLength
+  IN EXT4_PARTITION *Partition,
+  IN EXT4_FILE *File,
+  OUT VOID *Buffer,
+  IN UINT64 Offset,
+  IN OUT UINTN *OutLength
   );
 
 /**
@@ -674,7 +714,7 @@ Ext4ReadDir (
 
    @param[in]      File        Pointer to the open file.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4InitExtentsMap (
@@ -685,8 +725,6 @@ Ext4InitExtentsMap (
    Frees the extents map, deleting every extent stored.
 
    @param[in]      File        Pointer to the open file.
-
-   @retval none
 */
 VOID
 Ext4FreeExtentsMap (
@@ -700,11 +738,13 @@ Ext4FreeExtentsMap (
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT32   The CRC32c checksum.
+   @return The CRC32c checksum.
 */
 UINT32
 CalculateCrc32c (
-  CONST VOID *Buffer, UINTN Length, UINT32 InitialValue
+  IN CONST VOID *Buffer,
+  IN UINTN Length,
+  IN UINT32 InitialValue
   );
 
 /**
@@ -714,11 +754,13 @@ CalculateCrc32c (
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT16   The CRC16 checksum.
+   @return The CRC16 checksum.
 */
 UINT16
 CalculateCrc16 (
-  CONST VOID *Buffer, UINTN Length, UINT16 InitialValue
+  IN CONST VOID *Buffer,
+  IN UINTN Length,
+  IN UINT16 InitialValue
   );
 
 /**
@@ -728,11 +770,13 @@ CalculateCrc16 (
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT32   The checksum.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateChecksum (
-  IN CONST EXT4_PARTITION *Partition, IN CONST VOID *Buffer, IN UINTN Length,
+  IN CONST EXT4_PARTITION *Partition,
+  IN CONST VOID *Buffer,
+  IN UINTN Length,
   IN UINT32 InitialValue
   );
 
@@ -742,7 +786,7 @@ Ext4CalculateChecksum (
    @param[in]      Inode         Pointer to the inode.
    @param[in]      InodeNum      Inode number.
 
-   @retval UINT32   The checksum.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateInodeChecksum (
@@ -757,7 +801,7 @@ Ext4CalculateInodeChecksum (
    @param[in]      Inode         Pointer to the inode.
    @param[in]      InodeNum      Inode number.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4CheckInodeChecksum (
@@ -771,7 +815,7 @@ Ext4CheckInodeChecksum (
 
    @param[in]        Partition        Pointer to the opened partition.
 
-   @retval EFI_STATUS    Status of the unmount.
+   @return Status of the unmount.
  */
 EFI_STATUS
 Ext4UnmountAndFreePartition (
@@ -784,7 +828,7 @@ Ext4UnmountAndFreePartition (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4VerifyBlockGroupDescChecksum (
@@ -799,7 +843,7 @@ Ext4VerifyBlockGroupDescChecksum (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval UINT16   The checksum.
+   @return The checksum.
 */
 UINT16
 Ext4CalculateBlockGroupDescChecksum (
@@ -813,7 +857,7 @@ Ext4CalculateBlockGroupDescChecksum (
    @param[in]      Partition           Pointer to the opened EXT4 partition.
    @param[in]      RoCompatFeatureSet  Feature set to test.
 
-   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+   @return TRUE if all features are supported, else FALSE.
 */
 STATIC inline
 BOOLEAN
@@ -830,7 +874,7 @@ Ext4HasRoCompat (
    @param[in]      Partition           Pointer to the opened EXT4 partition.
    @param[in]      RoCompatFeatureSet  Feature set to test.
 
-   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+   @return TRUE if all features are supported, else FALSE.
 */
 STATIC inline
 BOOLEAN
@@ -847,7 +891,7 @@ Ext4HasCompat (
    @param[in]      Partition           Pointer to the opened EXT4 partition.
    @param[in]      RoCompatFeatureSet  Feature set to test.
 
-   @retval BOOLEAN        TRUE if all features are supported, else FALSE.
+   @return TRUE if all features are supported, else FALSE.
 */
 STATIC inline
 BOOLEAN
@@ -866,7 +910,7 @@ Ext4HasIncompat (
    @param[in]      Partition           Pointer to the opened EXT4 partition.
    @param[in]      RoCompatFeatureSet  Feature set to test.
 
-   @retval BOOLEAN        TRUE if the feature is supported
+   @return TRUE if the feature is supported, else FALSE.
 */
 STATIC inline
 BOOLEAN
@@ -882,7 +926,7 @@ Ext4HasMetadataCsum (
    @param[in]      Partition           Pointer to the opened EXT4 partition.
    @param[in]      RoCompatFeatureSet  Feature set to test.
 
-   @retval BOOLEAN        TRUE if the feature is supported
+   @return TRUE if the feature is supported, else FALSE.
 */
 STATIC inline
 BOOLEAN

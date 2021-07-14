@@ -1,21 +1,20 @@
 /**
- * @file Superblock managing routines
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Superblock managing routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
-STATIC CONST UINT32  supported_compat_feat = EXT4_FEATURE_COMPAT_EXT_ATTR;
+STATIC CONST UINT32  gSupportedCompatFeat = EXT4_FEATURE_COMPAT_EXT_ATTR;
 
-STATIC CONST UINT32  supported_ro_compat_feat =
+STATIC CONST UINT32  gSupportedRoCompatFeat =
   EXT4_FEATURE_RO_COMPAT_DIR_NLINK | EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE |
   EXT4_FEATURE_RO_COMPAT_HUGE_FILE | EXT4_FEATURE_RO_COMPAT_LARGE_FILE |
   EXT4_FEATURE_RO_COMPAT_GDT_CSUM | EXT4_FEATURE_RO_COMPAT_METADATA_CSUM | EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER;
 // TODO: Add btree support
-STATIC CONST UINT32  supported_incompat_feat =
+STATIC CONST UINT32  gSupportedIncompatFeat =
   EXT4_FEATURE_INCOMPAT_64BIT | EXT4_FEATURE_INCOMPAT_DIRDATA |
   EXT4_FEATURE_INCOMPAT_FLEX_BG | EXT4_FEATURE_INCOMPAT_FILETYPE |
   EXT4_FEATURE_INCOMPAT_EXTENTS | EXT4_FEATURE_INCOMPAT_LARGEDIR |
@@ -79,10 +78,10 @@ Ext4VerifySuperblockChecksum (
 }
 
 /**
- * Opens and parses the superblock.
- *
- * @param[out]     Partition Partition structure to fill with filesystem details.
- * @retval EFI_STATUS        EFI_SUCCESS if parsing was succesful and the partition is a
+   Opens and parses the superblock.
+
+   @param[out]     Partition Partition structure to fill with filesystem details.
+   @retval EFI_SUCCESS       Parsing was succesful and the partition is a
                              valid ext4 partition.
  */
 EFI_STATUS
@@ -93,6 +92,9 @@ Ext4OpenSuperblock (
   UINT32           Index;
   EFI_STATUS       Status;
   EXT4_SUPERBLOCK  *Sb;
+  UINT32  NrBlocksRem;
+  UINTN   NrBlocks;
+  UINT32  UnsupportedRoCompat;
 
   Status = Ext4ReadDiskIo (
              Partition,
@@ -126,8 +128,8 @@ Ext4OpenSuperblock (
   // It's essential to check for this to avoid filesystem corruption and to avoid
   // accidentally opening an ext2/3/4 filesystem we don't understand, which would be disasterous.
 
-  if (Partition->FeaturesIncompat & ~supported_incompat_feat) {
-    DEBUG ((EFI_D_INFO, "[Ext4] Unsupported %lx\n", Partition->FeaturesIncompat & ~supported_incompat_feat));
+  if (Partition->FeaturesIncompat & ~gSupportedIncompatFeat) {
+    DEBUG ((EFI_D_INFO, "[Ext4] Unsupported %lx\n", Partition->FeaturesIncompat & ~gSupportedIncompatFeat));
     return EFI_UNSUPPORTED;
   }
 
@@ -148,14 +150,14 @@ Ext4OpenSuperblock (
     Partition->InitialSeed = Ext4CalculateChecksum (Partition, Sb->s_uuid, 16, ~0U);
   }
 
-  UINT32  unsupported_ro_compat = Partition->FeaturesRoCompat & ~supported_ro_compat_feat;
+  UnsupportedRoCompat = Partition->FeaturesRoCompat & ~gSupportedRoCompatFeat;
 
-  if (unsupported_ro_compat != 0) {
-    DEBUG ((EFI_D_INFO, "[Ext4] Unsupported ro compat %x\n", unsupported_ro_compat));
+  if (UnsupportedRoCompat != 0) {
+    DEBUG ((EFI_D_INFO, "[Ext4] Unsupported ro compat %x\n", UnsupportedRoCompat));
     Partition->ReadOnly = TRUE;
   }
 
-  (VOID)supported_compat_feat;
+  (VOID)gSupportedCompatFeat;
 
   DEBUG ((EFI_D_INFO, "Read only = %u\n", Partition->ReadOnly));
 
@@ -192,8 +194,7 @@ Ext4OpenSuperblock (
     return EFI_VOLUME_CORRUPTED;
   }
 
-  UINT32  NrBlocksRem;
-  UINTN   NrBlocks = (UINTN)DivU64x32Remainder (
+  NrBlocks = (UINTN)DivU64x32Remainder (
                               Partition->NumberBlockGroups * Partition->DescSize,
                               Partition->BlockSize,
                               &NrBlocksRem
@@ -210,7 +211,9 @@ Ext4OpenSuperblock (
   }
 
   for (Index = 0; Index < Partition->NumberBlockGroups; Index++) {
-    EXT4_BLOCK_GROUP_DESC  *Desc = Ext4GetBlockGroupDesc (Partition, Index);
+    EXT4_BLOCK_GROUP_DESC  *Desc;
+    
+    Desc = Ext4GetBlockGroupDesc (Partition, Index);
     if (!Ext4VerifyBlockGroupDescChecksum (Partition, Desc, Index)) {
       DEBUG ((EFI_D_INFO, "[ext4] Block group descriptor %u has an invalid checksum\n", Index));
       return EFI_VOLUME_CORRUPTED;
@@ -231,7 +234,7 @@ Ext4OpenSuperblock (
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT32   The checksum.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateChecksum (

@@ -1,9 +1,9 @@
 /**
- * @file CRC32c calculation routines.
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file CRC32c calculation routines.
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include <Uefi.h>
@@ -61,16 +61,20 @@ STATIC CONST UINT32  gCrc32cLookupTable[256] = {
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT32   The CRC32c checksum.
+   @return The CRC32c checksum.
 */
 UINT32
 CalculateCrc32c (
-  CONST VOID *Buffer, UINTN Length, UINT32 InitialValue
+  IN CONST VOID *Buffer,
+  IN UINTN Length,
+  IN UINT32 InitialValue
   )
 {
-  CONST UINT8  *Buf = Buffer;
+  CONST UINT8  *Buf;
+  UINT32       Crc;
 
-  UINT32  Crc = ~InitialValue;
+  Buf = Buffer;
+  Crc = ~InitialValue;
 
   while(Length-- != 0) {
     Crc = gCrc32cLookupTable[(Crc & 0xFF) ^ *(Buf++)] ^ (Crc >> 8);

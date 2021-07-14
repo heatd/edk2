@@ -1,13 +1,13 @@
 /**
- * @file Block group related routines
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- * Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Block group related routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 /**
    Reads an inode from disk.
@@ -16,60 +16,66 @@
    @param[in]    InodeNum   Number of the desired Inode
    @param[out]   OutIno     Pointer to where it will be stored a pointer to the read inode.
 
-   @retval EFI_STATUS       Status of the inode read.
+   @return Status of the inode read.
  */
 EFI_STATUS
 Ext4ReadInode (
   IN EXT4_PARTITION *Partition, IN EXT4_INO_NR InodeNum, OUT EXT4_INODE **OutIno
   )
 {
-  UINT64  InodeOffset;
-  UINT32  BlockGroupNumber = (UINT32)DivU64x64Remainder (
-                                       InodeNum - 1,
-                                       Partition->SuperBlock.s_inodes_per_group,
-                                       &InodeOffset
-                                       );
+  UINT64                 InodeOffset;
+  UINT32                 BlockGroupNumber;
+  EXT4_INODE             *Inode;
+  EXT4_BLOCK_GROUP_DESC  *BlockGroup;
+  EXT4_BLOCK_NR          InodeTableStart;
+  EFI_STATUS             Status;
+
+  BlockGroupNumber = (UINT32)DivU64x64Remainder (
+                               InodeNum - 1,
+                               Partition->SuperBlock.s_inodes_per_group,
+                               &InodeOffset
+                               );
 
   // Check for the block group number's correctness
   if (BlockGroupNumber >= Partition->NumberBlockGroups) {
     return EFI_VOLUME_CORRUPTED;
   }
 
-  EXT4_INODE  *Inode = Ext4AllocateInode (Partition);
+  Inode = Ext4AllocateInode (Partition);
 
   if (Inode == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  EXT4_BLOCK_GROUP_DESC  *BlockGroup = Ext4GetBlockGroupDesc (Partition, BlockGroupNumber);
+  BlockGroup = Ext4GetBlockGroupDesc (Partition, BlockGroupNumber);
 
   // Note: We'll need to check INODE_UNINIT and friends when we add write support
 
-  EXT4_BLOCK_NR  InodeTableStart = Ext4MakeBlockNumberFromHalfs (
-                                     Partition,
-                                     BlockGroup->bg_inode_table_lo,
-                                     BlockGroup->bg_inode_table_hi
-                                     );
+  InodeTableStart = Ext4MakeBlockNumberFromHalfs (
+                      Partition,
+                      BlockGroup->bg_inode_table_lo,
+                      BlockGroup->bg_inode_table_hi
+                      );
 
-  EFI_STATUS  st = Ext4ReadDiskIo (
-                     Partition,
-                     Inode,
-                     Partition->InodeSize,
-                     Ext4BlockToByteOffset (Partition, InodeTableStart) + InodeOffset * Partition->InodeSize
-                     );
+  Status = Ext4ReadDiskIo (
+             Partition,
+             Inode,
+             Partition->InodeSize,
+             Ext4BlockToByteOffset (Partition, InodeTableStart) + InodeOffset * Partition->InodeSize
+             );
 
-  if (EFI_ERROR (st)) {
+  if (EFI_ERROR (Status)) {
     DEBUG ((
       EFI_D_ERROR,
-      "[ext4] Error reading inode: st %x; inode offset %lx"
+      "[ext4] Error reading inode: status %x; inode offset %lx"
       " inode table start %lu block group %lu\n",
-      st,
+      Status,
       InodeOffset,
       InodeTableStart,
       BlockGroupNumber
       ));
     FreePool (Inode);
-    return st;
+    return Status;
   }
 
   if (!Ext4CheckInodeChecksum (Partition, Inode, InodeNum)) {
@@ -93,7 +99,7 @@ Ext4ReadInode (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval UINT16   The checksum.
+   @return The checksum.
 */
 STATIC
 UINT16
@@ -127,7 +133,7 @@ Ext4CalculateBlockGroupDescChecksumMetadataCsum (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval UINT16   The checksum.
+   @return The checksum.
 */
 STATIC
 UINT16
@@ -161,7 +167,7 @@ Ext4CalculateBlockGroupDescChecksumGdtCsum (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4VerifyBlockGroupDescChecksum (
@@ -183,7 +189,7 @@ Ext4VerifyBlockGroupDescChecksum (
    @param[in]      BlockGroupDesc  Pointer to the block group descriptor.
    @param[in]      BlockGroupNum   Number of the block group.
 
-   @retval UINT16   The checksum.
+   @return The checksum.
 */
 UINT16
 Ext4CalculateBlockGroupDescChecksum (

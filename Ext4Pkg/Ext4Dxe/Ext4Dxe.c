@@ -1,16 +1,11 @@
 /**
- * @file Driver entry point
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Driver entry point
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "AutoGen.h"
-#include "Ext4.h"
-#include "Library/DebugLib.h"
-#include "Library/UefiLib.h"
-#include "Protocol/SimpleFileSystem.h"
+#include "Ext4Dxe.h"
 
 GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE  mExt4DriverNameTable[] = {
   {
@@ -34,7 +29,74 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE  mExt4ControllerNameTable
   }
 };
 
+// Needed by gExt4ComponentName*
+
+EFI_STATUS
+EFIAPI
+Ext4ComponentNameGetDriverName (
+  IN  EFI_COMPONENT_NAME_PROTOCOL  *This,
+  IN  CHAR8                        *Language,
+  OUT CHAR16                       **DriverName
+  );
+
+EFI_STATUS
+EFIAPI
+Ext4ComponentNameGetControllerName (
+  IN  EFI_COMPONENT_NAME_PROTOCOL                     *This,
+  IN  EFI_HANDLE                                      ControllerHandle,
+  IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
+  IN  CHAR8                                           *Language,
+  OUT CHAR16                                          **ControllerName
+  );
+
 extern EFI_COMPONENT_NAME_PROTOCOL  gExt4ComponentName;
+
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL  gExt4ComponentName = {
+  Ext4ComponentNameGetDriverName,
+  Ext4ComponentNameGetControllerName,
+  "eng"
+};
+
+//
+// EFI Component Name 2 Protocol
+//
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME2_PROTOCOL  gExt4ComponentName2 = {
+  (EFI_COMPONENT_NAME2_GET_DRIVER_NAME)Ext4ComponentNameGetDriverName,
+  (EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME)Ext4ComponentNameGetControllerName,
+  "en"
+};
+
+// Needed by gExt4BindingProtocol
+
+EFI_STATUS EFIAPI
+Ext4IsBindingSupported (
+  IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
+  IN EFI_HANDLE ControllerHandle,
+  IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL
+  );
+
+EFI_STATUS EFIAPI
+Ext4Bind (
+  IN EFI_DRIVER_BINDING_PROTOCOL *BindingProtocol,
+  IN EFI_HANDLE ControllerHandle,
+  IN EFI_DEVICE_PATH *RemainingDevicePath OPTIONAL
+  );
+
+EFI_STATUS EFIAPI
+Ext4Stop (
+  IN EFI_DRIVER_BINDING_PROTOCOL *This,
+  IN EFI_HANDLE ControllerHandle,
+  IN UINTN NumberOfChildren,
+  IN EFI_HANDLE *ChildHandleBuffer OPTIONAL
+  );
+
+EFI_DRIVER_BINDING_PROTOCOL  gExt4BindingProtocol =
+{
+  Ext4IsBindingSupported,
+  Ext4Bind,
+  Ext4Stop,
+  EXT4_DRIVER_VERSION
+};
 
 EFI_STATUS
 EFIAPI
@@ -72,21 +134,6 @@ Ext4ComponentNameGetDriverName (
            (BOOLEAN)(This == &gExt4ComponentName)
            );
 }
-
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME_PROTOCOL  gExt4ComponentName = {
-  Ext4ComponentNameGetDriverName,
-  Ext4ComponentNameGetControllerName,
-  "eng"
-};
-
-//
-// EFI Component Name 2 Protocol
-//
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_COMPONENT_NAME2_PROTOCOL  gExt4ComponentName2 = {
-  (EFI_COMPONENT_NAME2_GET_DRIVER_NAME)Ext4ComponentNameGetDriverName,
-  (EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME)Ext4ComponentNameGetControllerName,
-  "en"
-};
 
 EFI_STATUS EFIAPI
 Ext4IsBindingSupported (
@@ -144,7 +191,6 @@ Ext4Stop (
                   &Partition->Interface,
                   NULL
                   );
-  
 
   if (EFI_ERROR (Status)) {
     return Status;
@@ -190,14 +236,6 @@ Ext4Stop (
   return Status;
 }
 
-EFI_DRIVER_BINDING_PROTOCOL  gExt4BindingProtocol =
-{
-  Ext4IsBindingSupported,
-  Ext4Bind,
-  Ext4Stop,
-  EXT4_DRIVER_VERSION
-};
-
 EFI_STATUS
 EFIAPI
 Ext4EntryPoint (
@@ -205,21 +243,23 @@ Ext4EntryPoint (
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
 {
-  EFI_STATUS  st = EfiLibInstallAllDriverProtocols2 (
-                     ImageHandle,
-                     SystemTable,
-                     &gExt4BindingProtocol,
-                     ImageHandle,
-                     &gExt4ComponentName,
-                     &gExt4ComponentName2,
-                     NULL,
-                     NULL,
-                     NULL,
-                     NULL
-                     );
+  EFI_STATUS  Status;
 
-  if(EFI_ERROR (st)) {
-    return st;
+  Status = EfiLibInstallAllDriverProtocols2 (
+             ImageHandle,
+             SystemTable,
+             &gExt4BindingProtocol,
+             ImageHandle,
+             &gExt4ComponentName,
+             &gExt4ComponentName2,
+             NULL,
+             NULL,
+             NULL,
+             NULL
+             );
+
+  if(EFI_ERROR (Status)) {
+    return Status;
   }
 
   return Ext4InitialiseUnicodeCollation (ImageHandle);
@@ -288,28 +328,30 @@ Ext4IsBindingSupported (
   // Note to self: EFI_OPEN_PROTOCOL_TEST_PROTOCOL lets us not close the
   // protocol and ignore the output argument entirely
 
-  EFI_STATUS  st = gBS->OpenProtocol (
-                          ControllerHandle,
-                          &gEfiDiskIoProtocolGuid,
-                          NULL,
-                          BindingProtocol->ImageHandle,
-                          ControllerHandle,
-                          EFI_OPEN_PROTOCOL_TEST_PROTOCOL
-                          );
+  EFI_STATUS  Status;
 
-  if(EFI_ERROR (st)) {
-    return st;
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiDiskIoProtocolGuid,
+                  NULL,
+                  BindingProtocol->ImageHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_TEST_PROTOCOL
+                  );
+
+  if(EFI_ERROR (Status)) {
+    return Status;
   }
 
-  st = gBS->OpenProtocol (
-              ControllerHandle,
-              &gEfiBlockIoProtocolGuid,
-              NULL,
-              BindingProtocol->ImageHandle,
-              ControllerHandle,
-              EFI_OPEN_PROTOCOL_TEST_PROTOCOL
-              );
-  return st;
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiBlockIoProtocolGuid,
+                  NULL,
+                  BindingProtocol->ImageHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_TEST_PROTOCOL
+                  );
+  return Status;
 }
 
 EFI_STATUS EFIAPI
@@ -322,64 +364,65 @@ Ext4Bind (
   EFI_DISK_IO_PROTOCOL   *DiskIo;
   EFI_DISK_IO2_PROTOCOL  *DiskIo2;
   EFI_BLOCK_IO_PROTOCOL  *blockIo;
+  EFI_STATUS             Status;
 
   DiskIo2 = NULL;
 
   DEBUG ((EFI_D_INFO, "[Ext4] Binding to controller\n"));
 
-  EFI_STATUS  st = gBS->OpenProtocol (
-                          ControllerHandle,
-                          &gEfiDiskIoProtocolGuid,
-                          (VOID **)&DiskIo,
-                          BindingProtocol->ImageHandle,
-                          ControllerHandle,
-                          EFI_OPEN_PROTOCOL_BY_DRIVER
-                          );
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiDiskIoProtocolGuid,
+                  (VOID **)&DiskIo,
+                  BindingProtocol->ImageHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_BY_DRIVER
+                  );
 
-  if(EFI_ERROR (st)) {
-    return st;
+  if(EFI_ERROR (Status)) {
+    return Status;
   }
 
   DEBUG ((EFI_D_INFO, "[Ext4] Controller supports DISK_IO\n"));
 
-  st = gBS->OpenProtocol (
-              ControllerHandle,
-              &gEfiDiskIo2ProtocolGuid,
-              (VOID **)&DiskIo2,
-              BindingProtocol->ImageHandle,
-              ControllerHandle,
-              EFI_OPEN_PROTOCOL_BY_DRIVER
-              );
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiDiskIo2ProtocolGuid,
+                  (VOID **)&DiskIo2,
+                  BindingProtocol->ImageHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_BY_DRIVER
+                  );
   // It's okay to not support DISK_IO2
 
   if(DiskIo2 != NULL) {
     DEBUG ((EFI_D_INFO, "[Ext4] Controller supports DISK_IO2\n"));
   }
 
-  st = gBS->OpenProtocol (
-              ControllerHandle,
-              &gEfiBlockIoProtocolGuid,
-              (VOID **)&blockIo,
-              BindingProtocol->ImageHandle,
-              ControllerHandle,
-              EFI_OPEN_PROTOCOL_GET_PROTOCOL
-              );
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiBlockIoProtocolGuid,
+                  (VOID **)&blockIo,
+                  BindingProtocol->ImageHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                  );
 
-  if(EFI_ERROR (st)) {
-    goto error;
+  if(EFI_ERROR (Status)) {
+    goto Error;
   }
 
   DEBUG ((EFI_D_INFO, "Opening partition\n"));
 
-  st = Ext4OpenPartition (ControllerHandle, DiskIo, DiskIo2, blockIo);
+  Status = Ext4OpenPartition (ControllerHandle, DiskIo, DiskIo2, blockIo);
 
-  if(!EFI_ERROR (st)) {
-    return st;
+  if(!EFI_ERROR (Status)) {
+    return Status;
   }
 
-  DEBUG ((EFI_D_INFO, "[ext4] Error mounting %x\n", st));
+  DEBUG ((EFI_D_INFO, "[ext4] Error mounting %x\n", Status));
 
-error:
+Error:
   if(DiskIo) {
     gBS->CloseProtocol (
            ControllerHandle,
@@ -407,5 +450,5 @@ error:
            );
   }
 
-  return st;
+  return Status;
 }

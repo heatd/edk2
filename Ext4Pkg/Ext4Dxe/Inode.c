@@ -1,12 +1,11 @@
 /**
- * @file Inode related routines
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Inode related routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 #include <Uefi.h>
 #include <Library/TimeBaseLib.h>
@@ -17,7 +16,7 @@
    @param[in]      Inode         Pointer to the inode.
    @param[in]      InodeNum      Inode number.
 
-   @retval UINT32   The checksum.
+   @return The checksum.
 */
 UINT32
 Ext4CalculateInodeChecksum (
@@ -71,84 +70,107 @@ Ext4CalculateInodeChecksum (
    Reads from an EXT4 inode.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
    @param[in]      File          Pointer to the opened file.
-   @param[in]      Buffer        Pointer to the buffer.
+   @param[out]     Buffer        Pointer to the buffer.
    @param[in]      Offset        Offset of the read.
    @param[in out]  Length        Pointer to the length of the buffer, in bytes.
                                  After a succesful read, it's updated to the number of read bytes.
 
-   @retval EFI_STATUS         Status of the read operation.
+   @return Status of the read operation.
 */
 EFI_STATUS
 Ext4Read (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *Length
+  IN     EXT4_PARTITION *Partition,
+  IN     EXT4_FILE *File,
+  OUT    VOID *Buffer,
+  IN     UINT64 Offset,
+  IN OUT UINTN *Length
   )
 {
   // DEBUG((EFI_D_INFO, "Ext4Read[Offset %lu, Length %lu]\n", Offset, *Length));
-  EXT4_INODE  *Inode    = File->Inode;
-  UINT64      InodeSize = Ext4InodeSize (Inode);
+  EXT4_INODE  *Inode;
+  UINT64      InodeSize;
+  UINT64      CurrentSeek;
+  UINTN       RemainingRead;
+  UINTN       BeenRead;
+
+  Inode         = File->Inode;
+  InodeSize     = Ext4InodeSize (Inode);
+  CurrentSeek   = Offset;
+  RemainingRead = *Length;
+  BeenRead      = 0;
 
   if(Offset > InodeSize) {
     return EFI_DEVICE_ERROR;
   }
-
-  UINT64  CurrentSeek   = Offset;
-  UINTN   RemainingRead = *Length;
-  UINTN   BeenRead = 0;
 
   if (RemainingRead > InodeSize - Offset) {
     RemainingRead = (UINTN)(InodeSize - Offset);
   }
 
   while(RemainingRead != 0) {
-    UINTN        WasRead = 0;
+    UINTN        WasRead;
     EXT4_EXTENT  Extent;
+    UINT32       BlockOff;
+    EFI_STATUS   Status;
+    BOOLEAN      HasBackingExtent;
+
+    WasRead = 0;
 
     // The algorithm here is to get the extent corresponding to the current block
     // and then read as much as we can from the current extent.
-    UINT32  BlockOff;
 
-    EFI_STATUS  st = Ext4GetExtent (
-                       Partition,
-                       File,
-                       DivU64x32Remainder (CurrentSeek, Partition->BlockSize, &BlockOff),
-                       &Extent
-                       );
+    Status = Ext4GetExtent (
+               Partition,
+               File,
+               DivU64x32Remainder (CurrentSeek, Partition->BlockSize, &BlockOff),
+               &Extent
+               );
 
-    if(st != EFI_SUCCESS && st != EFI_NO_MAPPING) {
-      return st;
+    if(Status != EFI_SUCCESS && Status != EFI_NO_MAPPING) {
+      return Status;
     }
 
-    BOOLEAN  HasBackingExtent = st != EFI_NO_MAPPING;
+    HasBackingExtent = Status != EFI_NO_MAPPING;
 
     if(!HasBackingExtent) {
-      UINT32  HoleOff = BlockOff;
-      UINTN   HoleLen = Partition->BlockSize - HoleOff;
+      UINT32  HoleOff;
+      UINTN   HoleLen;
+
+      HoleOff = BlockOff;
+      HoleLen = Partition->BlockSize - HoleOff;
       WasRead = HoleLen > RemainingRead ? RemainingRead : HoleLen;
       // TODO: Get the hole size and memset all that
       SetMem (Buffer, WasRead, 0);
     } else {
-      UINT64  ExtentStartBytes   = (((UINT64)Extent.ee_start_hi << 32) | Extent.ee_start_lo) * Partition->BlockSize;
-      UINT64  ExtentLengthBytes  = Extent.ee_len * Partition->BlockSize;
-      UINT64  ExtentLogicalBytes = (UINT64)Extent.ee_block * Partition->BlockSize;
+      UINT64  ExtentStartBytes;
+      UINT64  ExtentLengthBytes;
+      UINT64  ExtentLogicalBytes;
 
       // Our extent offset is the difference between CurrentSeek and ExtentLogicalBytes
-      UINT64  ExtentOffset  = CurrentSeek - ExtentLogicalBytes;
-      UINTN   ExtentMayRead = (UINTN)(ExtentLengthBytes - ExtentOffset);
+      UINT64  ExtentOffset;
+      UINTN   ExtentMayRead;
+
+      ExtentStartBytes   = (((UINT64)Extent.ee_start_hi << 32) | Extent.ee_start_lo) * Partition->BlockSize;
+      ExtentLengthBytes  = Extent.ee_len * Partition->BlockSize;
+      ExtentLogicalBytes = (UINT64)Extent.ee_block * Partition->BlockSize;
+      ExtentOffset  = CurrentSeek - ExtentLogicalBytes;
+      ExtentMayRead = (UINTN)(ExtentLengthBytes - ExtentOffset);
+
       WasRead = ExtentMayRead > RemainingRead ? RemainingRead : ExtentMayRead;
 
       // DEBUG((EFI_D_INFO, "[ext4] may read %lu, remaining %lu\n", ExtentMayRead, RemainingRead));
       // DEBUG((EFI_D_INFO, "[ext4] Reading block %lu\n", (ExtentStartBytes + ExtentOffset) / Partition->BlockSize));
-      st = Ext4ReadDiskIo (Partition, Buffer, WasRead, ExtentStartBytes + ExtentOffset);
+      Status = Ext4ReadDiskIo (Partition, Buffer, WasRead, ExtentStartBytes + ExtentOffset);
 
-      if(EFI_ERROR (st)) {
+      if(EFI_ERROR (Status)) {
         DEBUG ((
           EFI_D_ERROR,
           "[ext4] Error %x reading [%lu, %lu]\n",
-          st,
+          Status,
           ExtentStartBytes + ExtentOffset,
           ExtentStartBytes + ExtentOffset + WasRead - 1
           ));
-        return st;
+        return Status;
       }
     }
 
@@ -168,16 +190,20 @@ Ext4Read (
    Allocates a zeroed inode structure.
    @param[in]      Partition     Pointer to the opened EXT4 partition.
 
-   @retval EXT4_INODE            Pointer to the allocated structure, from the pool,
-                                 with size Partition->InodeSize.
+   @return Pointer to the allocated structure, from the pool,
+           with size Partition->InodeSize.
 */
 EXT4_INODE *
 Ext4AllocateInode (
-  EXT4_PARTITION *Partition
+  IN EXT4_PARTITION *Partition
   )
 {
-  BOOLEAN  NeedsToZeroRest = FALSE;
-  UINT32   InodeSize = Partition->InodeSize;
+  BOOLEAN     NeedsToZeroRest;
+  UINT32      InodeSize;
+  EXT4_INODE  *Inode;
+
+  NeedsToZeroRest = FALSE;
+  InodeSize = Partition->InodeSize;
 
   // HACK!: We allocate a structure of at least sizeof(EXT4_INODE), but in the future, when
   // write support is added and we need to flush inodes to disk, we could have a bit better
@@ -187,7 +213,7 @@ Ext4AllocateInode (
     NeedsToZeroRest = TRUE;
   }
 
-  EXT4_INODE  *Inode = AllocateZeroPool (InodeSize);
+  Inode = AllocateZeroPool (InodeSize);
 
   if (!Inode) {
     return NULL;
@@ -204,7 +230,7 @@ Ext4AllocateInode (
    Checks if a file is a directory.
    @param[in]      File          Pointer to the opened file.
 
-   @retval BOOLEAN         TRUE if file is a directory.
+   @return TRUE if file is a directory.
 */
 BOOLEAN
 Ext4FileIsDir (
@@ -218,7 +244,7 @@ Ext4FileIsDir (
    Checks if a file is a regular file.
    @param[in]      File          Pointer to the opened file.
 
-   @retval BOOLEAN         TRUE if file is a regular file.
+   @return BOOLEAN         TRUE if file is a regular file.
 */
 BOOLEAN
 Ext4FileIsReg (
@@ -232,15 +258,18 @@ Ext4FileIsReg (
    Calculates the physical space used by a file.
    @param[in]      File          Pointer to the opened file.
 
-   @retval UINT64         Physical space used by a file, in bytes.
+   @return Physical space used by a file, in bytes.
 */
 UINT64
 Ext4FilePhysicalSpace (
   EXT4_FILE *File
   )
 {
-  BOOLEAN  HugeFile = File->Partition->FeaturesIncompat & EXT4_FEATURE_RO_COMPAT_HUGE_FILE;
-  UINT64   Blocks   = File->Inode->i_blocks;
+  BOOLEAN  HugeFile;
+  UINT64   Blocks;
+
+  HugeFile = Ext4HasRoCompat (File->Partition, EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
+  Blocks   = File->Inode->i_blocks;
 
   if(HugeFile) {
     Blocks |= ((UINT64)File->Inode->i_osd2.data_linux.l_i_blocks_high) << 32;
@@ -312,10 +341,13 @@ EXT4_FILE_GET_TIME_GENERIC (
 */
 VOID
 Ext4FileCreateTime (
-  IN EXT4_FILE *File, OUT EFI_TIME *Time
+  IN EXT4_FILE *File,
+  OUT EFI_TIME *Time
   )
 {
-  EXT4_INODE  *Inode = File->Inode;
+  EXT4_INODE  *Inode;
+
+  Inode = File->Inode;
 
   if (!Ext4InodeHasField (Inode, i_crtime)) {
     SetMem (Time, sizeof (EFI_TIME), 0);
@@ -331,7 +363,7 @@ Ext4FileCreateTime (
    @param[in]      Inode         Pointer to the inode.
    @param[in]      InodeNum      Inode number.
 
-   @retval BOOLEAN   True if checksum if correct, false if there is corruption.
+   @return TRUE if checksum is correct, FALSE if there is corruption.
 */
 BOOLEAN
 Ext4CheckInodeChecksum (

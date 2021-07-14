@@ -1,10 +1,10 @@
 /**
- * @file Unicode collation routines
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- * Copyright (c) 2005 - 2017, Intel Corporation. All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Unicode collation routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  Copyright (c) 2005 - 2017, Intel Corporation. All rights reserved.
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include <Uefi.h>

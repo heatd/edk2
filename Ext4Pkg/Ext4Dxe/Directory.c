@@ -1,25 +1,26 @@
 /**
- * @file Directory related routines
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Directory related routines
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 /**
    Retrieves the filename of the directory entry and converts it to UTF-16/UCS-2
 
    @param[in]      Entry   Pointer to a EXT4_DIR_ENTRY.
-   @param[in]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
+   @param[out]      Ucs2FileName   Pointer to an array of CHAR16's, of size EXT4_NAME_MAX + 1.
 
    @retval EFI_SUCCESS   Unicode collation was successfully initialised.
    @retval !EFI_SUCCESS  Failure.
 */
 EFI_STATUS
 Ext4GetUcs2DirentName (
-  EXT4_DIR_ENTRY *Entry, CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]
+  IN EXT4_DIR_ENTRY *Entry,
+  OUT CHAR16 Ucs2FileName[EXT4_NAME_MAX + 1]
   )
 {
   CHAR8  Utf8NameBuf[EXT4_NAME_MAX + 1];
@@ -41,27 +42,34 @@ Ext4GetUcs2DirentName (
    @param[in]      Partition   Pointer to the ext4 partition.
    @param[out]     Result      Pointer to the destination directory entry.
 
-   @retval EFI_STATUS          Result of the operation
+   @return The result of the operation.
 */
 EFI_STATUS
 Ext4RetrieveDirent (
-  EXT4_FILE *File, CONST CHAR16 *Name, EXT4_PARTITION *Partition,
-  EXT4_DIR_ENTRY *res
+  IN EXT4_FILE *File,
+  IN CONST CHAR16 *Name,
+  IN EXT4_PARTITION *Partition,
+  OUT EXT4_DIR_ENTRY *res
   )
 {
-  EFI_STATUS  st   = EFI_NOT_FOUND;
-  CHAR8       *Buf = AllocatePool (Partition->BlockSize);
+  EFI_STATUS  Status;
+  CHAR8       *Buf;
+  UINT64      Off;
+  EXT4_INODE  *Inode;
+  UINT64      DirInoSize;
+  UINT32      BlockRemainder;
+
+  Status = EFI_NOT_FOUND;
+  Buf    = AllocatePool (Partition->BlockSize);
 
   if(Buf == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  UINT64  off = 0;
+  Off = 0;
 
-  EXT4_INODE  *Inode     = File->Inode;
-  UINT64      DirInoSize = EXT4_INODE_SIZE (Inode);
-
-  UINT32  BlockRemainder;
+  Inode = File->Inode;
+  DirInoSize = EXT4_INODE_SIZE (Inode);
 
   DivU64x32Remainder (DirInoSize, Partition->BlockSize, &BlockRemainder);
   if(BlockRemainder != 0) {
@@ -69,23 +77,28 @@ Ext4RetrieveDirent (
     return EFI_VOLUME_CORRUPTED;
   }
 
-  while(off < DirInoSize) {
-    UINTN  Length = Partition->BlockSize;
+  while(Off < DirInoSize) {
+    UINTN  Length;
 
-    st = Ext4Read (Partition, File, Buf, off, &Length);
+    Length = Partition->BlockSize;
 
-    if (st != EFI_SUCCESS) {
+    Status = Ext4Read (Partition, File, Buf, Off, &Length);
+
+    if (Status != EFI_SUCCESS) {
       FreePool (Buf);
-      return st;
+      return Status;
     }
 
     for(CHAR8 *b = Buf; b < Buf + Partition->BlockSize; ) {
-      EXT4_DIR_ENTRY  *entry = (EXT4_DIR_ENTRY *)b;
-      ASSERT (entry->rec_len != 0);
+      EXT4_DIR_ENTRY  *Entry;
+      UINTN           RemainingBlock;
 
-      UINTN  RemainingBlock = Partition->BlockSize - (b - Buf);
+      Entry = (EXT4_DIR_ENTRY *)b;
+      ASSERT (Entry->rec_len != 0);
 
-      if(entry->name_len > RemainingBlock || entry->rec_len > RemainingBlock) {
+      RemainingBlock = Partition->BlockSize - (b - Buf);
+
+      if(Entry->name_len > RemainingBlock || Entry->rec_len > RemainingBlock) {
         // Corrupted filesystem
         // TODO: Do the proper ext4 corruption detection thing and dirty the filesystem.
         FreePool (Buf);
@@ -98,44 +111,49 @@ Ext4RetrieveDirent (
         1) It's nicer to work with.
         2) Linux and a number of BSDs also have a filename limit of 255.
       */
-      if(entry->name_len > EXT4_NAME_MAX) {
+      if(Entry->name_len > EXT4_NAME_MAX) {
         continue;
       }
 
       // Unused entry
-      if(entry->inode == 0) {
-        b += entry->rec_len;
+      if(Entry->inode == 0) {
+        b += Entry->rec_len;
         continue;
       }
 
       CHAR16  Ucs2FileName[EXT4_NAME_MAX + 1];
 
-      st = Ext4GetUcs2DirentName (entry, Ucs2FileName);
+      Status = Ext4GetUcs2DirentName (Entry, Ucs2FileName);
 
       /* In theory, this should never fail.
        * In reality, it's quite possible that it can fail, considering filenames in
        * Linux (and probably other nixes) are just null-terminated bags of bytes, and don't
        * need to form valid ASCII/UTF-8 sequences.
        */
-      if (EFI_ERROR (st)) {
+      if (EFI_ERROR (Status)) {
         // If we error out, skip this entry
         // I'm not sure if this is correct behaviour, but I don't think there's a precedent here.
-        b += entry->rec_len;
+        b += Entry->rec_len;
         continue;
       }
 
-      if (entry->name_len == StrLen (Name) &&
+      if (Entry->name_len == StrLen (Name) &&
           !Ext4StrCmpInsensitive (Ucs2FileName, (CHAR16 *)Name)) {
-        UINTN  ToCopy = entry->rec_len > sizeof (EXT4_DIR_ENTRY) ? sizeof (EXT4_DIR_ENTRY) : entry->rec_len;
-        CopyMem (res, entry, ToCopy);
+        UINTN  ToCopy;
+
+        ToCopy = Entry->rec_len > sizeof (EXT4_DIR_ENTRY) ?
+                 sizeof (EXT4_DIR_ENTRY) :
+                 Entry->rec_len;
+
+        CopyMem (res, Entry, ToCopy);
         FreePool (Buf);
         return EFI_SUCCESS;
       }
 
-      b += entry->rec_len;
+      b += Entry->rec_len;
     }
 
-    off += Partition->BlockSize;
+    Off += Partition->BlockSize;
   }
 
   FreePool (Buf);
@@ -154,36 +172,39 @@ Ext4RetrieveDirent (
 */
 EFI_STATUS
 Ext4OpenDirent (
-  EXT4_PARTITION *Partition, UINT64 OpenMode, OUT EXT4_FILE **OutFile,
-  EXT4_DIR_ENTRY *Entry
+  IN  EXT4_PARTITION *Partition,
+  IN  UINT64 OpenMode,
+  OUT EXT4_FILE **OutFile,
+  IN  EXT4_DIR_ENTRY *Entry
   )
 {
-  EFI_STATUS  st;
-  EXT4_FILE   *File = AllocateZeroPool (sizeof (EXT4_FILE));
+  EFI_STATUS  Status;
+  CHAR16      FileName[EXT4_NAME_MAX + 1];
+  EXT4_FILE   *File;
+
+  File = AllocateZeroPool (sizeof (EXT4_FILE));
 
   if (File == NULL) {
-    st = EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
     goto Error;
   }
 
-  CHAR16  FileName[EXT4_NAME_MAX + 1];
+  Status = Ext4GetUcs2DirentName (Entry, FileName);
 
-  st = Ext4GetUcs2DirentName (Entry, FileName);
-
-  if (EFI_ERROR (st)) {
+  if (EFI_ERROR (Status)) {
     goto Error;
   }
 
   File->FileName = AllocateZeroPool (StrSize (FileName));
 
   if (!File->FileName) {
-    st = EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
     goto Error;
   }
 
-  st = Ext4InitExtentsMap (File);
+  Status = Ext4InitExtentsMap (File);
 
-  if (EFI_ERROR (st)) {
+  if (EFI_ERROR (Status)) {
     goto Error;
   }
 
@@ -194,9 +215,9 @@ Ext4OpenDirent (
 
   Ext4SetupFile (File, (EXT4_PARTITION *)Partition);
 
-  st = Ext4ReadInode (Partition, Entry->inode, &File->Inode);
+  Status = Ext4ReadInode (Partition, Entry->inode, &File->Inode);
 
-  if (EFI_ERROR (st)) {
+  if (EFI_ERROR (Status)) {
     goto Error;
   }
 
@@ -217,7 +238,7 @@ Error:
     FreePool (File);
   }
 
-  return st;
+  return Status;
 }
 
 /**
@@ -229,19 +250,24 @@ Error:
    @param[in]      OpenMode    Mode in which the file is supposed to be open.
    @param[out]     OutFile     Pointer to the newly opened file.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4OpenFile (
-  EXT4_FILE *Directory, CONST CHAR16 *Name, EXT4_PARTITION *Partition, UINT64 OpenMode,
+  IN  EXT4_FILE *Directory,
+  IN  CONST CHAR16 *Name,
+  IN  EXT4_PARTITION *Partition,
+  IN  UINT64 OpenMode,
   OUT EXT4_FILE **OutFile
   )
 {
   EXT4_DIR_ENTRY  Entry;
-  EFI_STATUS      st = Ext4RetrieveDirent (Directory, Name, Partition, &Entry);
+  EFI_STATUS      Status;
 
-  if (EFI_ERROR (st)) {
-    return st;
+  Status = Ext4RetrieveDirent (Directory, Name, Partition, &Entry);
+
+  if (EFI_ERROR (Status)) {
+    return Status;
   }
 
   // EFI requires us to error out on ".." opens for the root directory
@@ -258,12 +284,13 @@ Ext4OpenVolume (
   )
 {
   EXT4_INODE  *RootInode;
+  EFI_STATUS  Status;
 
-  EFI_STATUS  st = Ext4ReadInode ((EXT4_PARTITION *)Partition, 2, &RootInode);
+  Status = Ext4ReadInode ((EXT4_PARTITION *)Partition, 2, &RootInode);
 
-  if(EFI_ERROR (st)) {
-    DEBUG ((EFI_D_ERROR, "[ext4] Could not open root inode - status %x\n", st));
-    return st;
+  if(EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "[ext4] Could not open root inode - status %x\n", Status));
+    return Status;
   }
 
   EXT4_FILE  *RootDir = AllocateZeroPool (sizeof (EXT4_FILE));
@@ -274,7 +301,7 @@ Ext4OpenVolume (
   }
 
   // The filename will be "\"(null terminated of course)
-  RootDir->FileName = AllocateZeroPool (2 * sizeof(CHAR16));
+  RootDir->FileName = AllocateZeroPool (2 * sizeof (CHAR16));
 
   if (!RootDir->FileName) {
     FreePool (RootDir);
@@ -300,9 +327,18 @@ Ext4OpenVolume (
   return EFI_SUCCESS;
 }
 
+/**
+   Validates a directory entry.
+
+   @param[in]      Dirent      Pointer to the directory entry.
+
+   @retval TRUE          Valid directory entry.
+           FALSE         Invalid directory entry.
+*/
+STATIC
 BOOLEAN
 Ext4ValidDirent (
-  EXT4_DIR_ENTRY *Dirent
+  IN CONST EXT4_DIR_ENTRY *Dirent
   )
 {
   UINTN  RequiredSize = Dirent->name_len + EXT4_MIN_DIR_ENTRY_LEN;
@@ -330,20 +366,28 @@ Ext4ValidDirent (
    @param[in out] OutLength    Pointer to a UINTN that contains the length of the buffer,
                                and the length of the actual EFI_FILE_INFO after the call.
 
-   @retval EFI_STATUS          Result of the operation
+   @return Result of the operation.
 */
 EFI_STATUS
 Ext4ReadDir (
-  EXT4_PARTITION *Partition, EXT4_FILE *File, VOID *Buffer, UINT64 Offset, IN OUT UINTN *OutLength
+  IN EXT4_PARTITION *Partition,
+  IN EXT4_FILE *File,
+  OUT VOID *Buffer,
+  IN UINT64 Offset,
+  IN OUT UINTN *OutLength
   )
 {
   DEBUG ((EFI_D_INFO, "[ext4] Ext4ReadDir offset %lu\n", Offset));
-  EXT4_INODE  *DirIno = File->Inode;
-  EFI_STATUS  st = EFI_SUCCESS;
+  EXT4_INODE      *DirIno;
+  EFI_STATUS      Status;
+  UINT64          DirInoSize;
+  UINTN           Len;
+  UINT32          BlockRemainder;
+  EXT4_DIR_ENTRY  Entry;
 
-  UINT64  DirInoSize = Ext4InodeSize (DirIno);
-  UINTN   Len;
-  UINT32  BlockRemainder;
+  DirIno     = File->Inode;
+  Status     = EFI_SUCCESS;
+  DirInoSize = Ext4InodeSize (DirIno);
 
   DivU64x32Remainder (DirInoSize, Partition->BlockSize, &BlockRemainder);
   if(BlockRemainder != 0) {
@@ -351,15 +395,17 @@ Ext4ReadDir (
     return EFI_VOLUME_CORRUPTED;
   }
 
-  EXT4_DIR_ENTRY  Entry;
-
   while(TRUE) {
+    EXT4_FILE  *TempFile;
+
+    TempFile = NULL;
+
     // We (try to) read the maximum size of a directory entry at a time
     // Note that we don't need to read any padding that may exist after it.
-    Len = sizeof (Entry);
-    st  = Ext4Read (Partition, File, &Entry, Offset, &Len);
+    Len    = sizeof (Entry);
+    Status = Ext4Read (Partition, File, &Entry, Offset, &Len);
 
-    if (EFI_ERROR (st)) {
+    if (EFI_ERROR (Status)) {
       goto Out;
     }
 
@@ -369,19 +415,19 @@ Ext4ReadDir (
 
     if (Len == 0) {
       *OutLength = 0;
-      st = EFI_SUCCESS;
+      Status     = EFI_SUCCESS;
       goto Out;
     }
 
     if (Len < EXT4_MIN_DIR_ENTRY_LEN) {
-      st = EFI_VOLUME_CORRUPTED;
+      Status = EFI_VOLUME_CORRUPTED;
       goto Out;
     }
 
     // Invalid directory entry length
     if (!Ext4ValidDirent (&Entry)) {
       DEBUG ((EFI_D_ERROR, "[ext4] Invalid dirent at offset %lu\n", Offset));
-      st = EFI_VOLUME_CORRUPTED;
+      Status = EFI_VOLUME_CORRUPTED;
       goto Out;
     }
 
@@ -393,11 +439,9 @@ Ext4ReadDir (
       continue;
     }
 
-    EXT4_FILE  *TempFile = NULL;
+    Status = Ext4OpenDirent (Partition, EFI_FILE_MODE_READ, &TempFile, &Entry);
 
-    st = Ext4OpenDirent (Partition, EFI_FILE_MODE_READ, &TempFile, &Entry);
-
-    if (EFI_ERROR (st)) {
+    if (EFI_ERROR (Status)) {
       goto Out;
     }
 
@@ -412,8 +456,8 @@ Ext4ReadDir (
       DEBUG ((EFI_D_INFO, "[ext4] Listing file %s\n", TempFile->FileName));
  #endif
 
-    st = Ext4GetFileInfo (TempFile, Buffer, OutLength);
-    if (!EFI_ERROR (st)) {
+    Status = Ext4GetFileInfo (TempFile, Buffer, OutLength);
+    if (!EFI_ERROR (Status)) {
       File->Position = Offset + Entry.rec_len;
     }
 
@@ -422,7 +466,7 @@ Ext4ReadDir (
     break;
   }
 
-  st = EFI_SUCCESS;
+  Status = EFI_SUCCESS;
 Out:
-  return st;
+  return Status;
 }

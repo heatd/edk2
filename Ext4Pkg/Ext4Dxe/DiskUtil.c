@@ -1,11 +1,10 @@
 /**
- * @file Disk utilities
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Disk utilities
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 /**
    Reads from the partition's disk using the DISK_IO protocol.
@@ -15,11 +14,14 @@
    @param[in]  Length         Length of the destination buffer.
    @param[in]  Offset         Offset, in bytes, of the location to read.
 
-   @retval EFI_STATUS         Success status of the disk read.
+   @return Success status of the disk read.
  */
 EFI_STATUS
 Ext4ReadDiskIo (
-  IN EXT4_PARTITION *Partition, OUT VOID *Buffer, IN UINTN Length, IN UINT64 Offset
+  IN EXT4_PARTITION *Partition,
+  OUT VOID *Buffer,
+  IN UINTN Length,
+  IN UINT64 Offset
   )
 {
   return Ext4DiskIo (Partition)->ReadDisk (Ext4DiskIo (Partition), Ext4MediaId (Partition), Offset, Length, Buffer);
@@ -33,11 +35,14 @@ Ext4ReadDiskIo (
    @param[in]  NumberBlocks   Length of the read, in filesystem blocks.
    @param[in]  BlockNumber    Starting block number.
 
-   @retval EFI_STATUS         Success status of the read.
+   @return Success status of the read.
  */
 EFI_STATUS
 Ext4ReadBlocks (
-  IN EXT4_PARTITION *Partition, OUT VOID *Buffer, IN UINTN NumberBlocks, IN EXT4_BLOCK_NR BlockNumber
+  IN EXT4_PARTITION *Partition,
+  OUT VOID *Buffer,
+  IN UINTN NumberBlocks,
+  IN EXT4_BLOCK_NR BlockNumber
   )
 {
   return Ext4ReadDiskIo (Partition, Buffer, NumberBlocks * Partition->BlockSize, BlockNumber * Partition->BlockSize);
@@ -51,15 +56,19 @@ Ext4ReadBlocks (
    @param[in]  NumberBlocks   Length of the read, in filesystem blocks.
    @param[in]  BlockNumber    Starting block number.
 
-   @retval VOID*              Buffer allocated by AllocatePool, or NULL if some part of the process
-                              failed.
+   @return Buffer allocated by AllocatePool, or NULL if some part of the process
+           failed.
  */
 VOID *
 Ext4AllocAndReadBlocks (
-  IN EXT4_PARTITION *Partition, IN UINTN NumberBlocks, IN EXT4_BLOCK_NR BlockNumber
+  IN EXT4_PARTITION *Partition,
+  IN UINTN NumberBlocks,
+  IN EXT4_BLOCK_NR BlockNumber
   )
 {
-  VOID  *Buf = AllocatePool (NumberBlocks * Partition->BlockSize);
+  VOID  *Buf;
+
+  Buf = AllocatePool (NumberBlocks * Partition->BlockSize);
 
   if(Buf == NULL) {
     return NULL;

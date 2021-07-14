@@ -1,12 +1,11 @@
 /**
- * @file EFI_FILE_PROTOCOL implementation for EXT4
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file EFI_FILE_PROTOCOL implementation for EXT4
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 #include <Guid/FileInfo.h>
 #include <Guid/FileSystemInfo.h>
@@ -16,7 +15,7 @@
 
    @param[in]        Original    Pointer to the original file.
 
-   @retval EXT4_FILE             Pointer to the new file structure.
+   @return Pointer to the new file structure.
  */
 STATIC
 EXT4_FILE *
@@ -88,9 +87,13 @@ Ext4Open (
   IN UINT64                   Attributes
   )
 {
-  EXT4_FILE       *Current   = (EXT4_FILE *)This;
-  EXT4_PARTITION  *Partition = Current->Partition;
-  UINTN           Level = 0;
+  EXT4_FILE       *Current;
+  EXT4_PARTITION  *Partition;
+  UINTN           Level;
+
+  Current   = (EXT4_FILE *)This;
+  Partition = Current->Partition;
+  Level     = 0;
 
   DEBUG ((EFI_D_INFO, "[ext4] Ext4Open %s\n", FileName));
   // If the path starts with a backslash, we treat the root directory as the base directory
@@ -100,13 +103,16 @@ Ext4Open (
   }
 
   while(FileName[0] != L'\0') {
+    CHAR16      PathSegment[EXT4_NAME_MAX + 1];
+    UINTN       Length;
+    EXT4_FILE   *File;
+    EFI_STATUS  Status;
+
     // Discard leading path separators
     while(FileName[0] == L'\\') {
       FileName++;
     }
 
-    CHAR16  PathSegment[EXT4_NAME_MAX + 1];
-    UINTN   Length;
     if(GetPathSegment (FileName, PathSegment, &Length) != EFI_SUCCESS) {
       return EFI_BUFFER_TOO_SMALL;
     }
@@ -120,8 +126,6 @@ Ext4Open (
 
     DEBUG ((EFI_D_INFO, "[ext4] Opening %s\n", PathSegment));
 
-    EXT4_FILE  *File;
-
     // TODO: We should look at the execute bit for permission checking on directory lookups
     // ^^ This would require a better knowledge of the path itself since we would need to know whether or not
     // we're the last token.
@@ -132,13 +136,13 @@ Ext4Open (
       return EFI_INVALID_PARAMETER;
     }
 
-    EFI_STATUS  st = Ext4OpenFile (Current, PathSegment, Partition, EFI_FILE_MODE_READ, &File);
+    Status = Ext4OpenFile (Current, PathSegment, Partition, EFI_FILE_MODE_READ, &File);
 
-    if(EFI_ERROR (st) && st != EFI_NOT_FOUND) {
-      return st;
-    } else if(st == EFI_NOT_FOUND) {
+    if(EFI_ERROR (Status) && Status != EFI_NOT_FOUND) {
+      return Status;
+    } else if(Status == EFI_NOT_FOUND) {
       // TODO: Handle file creation
-      return st;
+      return Status;
     }
 
     // Check if this is a valid file to open in EFI
@@ -191,7 +195,7 @@ Ext4Close (
 
    @param[in]        File        Pointer to the file.
 
-   @retval EFI_STATUS            Status of the closing of the file.
+   @return Status of the closing of the file.
  */
 EFI_STATUS
 Ext4CloseInternal (
@@ -228,28 +232,32 @@ Ext4ReadFile (
   OUT VOID                    *Buffer
   )
 {
-  EXT4_FILE       *File = (EXT4_FILE *)This;
-  EXT4_PARTITION  *Partition = File->Partition;
+  EXT4_FILE       *File;
+  EXT4_PARTITION  *Partition;
+  EFI_STATUS      Status;
+
+  File = (EXT4_FILE *)This;
+  Partition = File->Partition;
 
   ASSERT (Ext4FileIsOpenable (File));
 
   if(Ext4FileIsReg (File)) {
-    EFI_STATUS  st = Ext4Read (Partition, File, Buffer, File->Position, BufferSize);
-    if(st == EFI_SUCCESS) {
+    Status = Ext4Read (Partition, File, Buffer, File->Position, BufferSize);
+    if(Status == EFI_SUCCESS) {
       File->Position += *BufferSize;
     }
 
-    return st;
+    return Status;
   } else if(Ext4FileIsDir (File)) {
     DEBUG ((EFI_D_WARN, "[ext4] ReadDir not implemented\n"));
-    EFI_STATUS  st = Ext4ReadDir (Partition, File, Buffer, File->Position, BufferSize);
-    DEBUG ((EFI_D_INFO, "[ext4] ReadDir status %lx\n", st));
+    Status = Ext4ReadDir (Partition, File, Buffer, File->Position, BufferSize);
+    DEBUG ((EFI_D_INFO, "[ext4] ReadDir status %lx\n", Status));
 
-    if(st == EFI_SUCCESS) {
+    if(Status == EFI_SUCCESS) {
       DEBUG ((EFI_D_INFO, "[ext4] ReadDir retlen %lu\n", *BufferSize));
     }
 
-    return st;
+    return Status;
   }
 
   return EFI_SUCCESS;
@@ -322,7 +330,7 @@ Ext4SetPosition (
    @param[out]     Info           Pointer to a EFI_FILE_INFO.
    @param[in out]  BufferSize     Pointer to the buffer size
 
-   @retval EFI_STATUS         Status of the file information request.
+   @return Status of the file information request.
 */
 EFI_STATUS
 Ext4GetFileInfo (
@@ -364,7 +372,7 @@ Ext4GetFileInfo (
    @param[out]     Info           Pointer to a EFI_FILE_SYSTEM_INFO.
    @param[in out]  BufferSize     Pointer to the buffer size
 
-   @retval EFI_STATUS         Status of the file information request.
+   @return Status of the file information request.
 */
 STATIC
 EFI_STATUS
@@ -373,38 +381,44 @@ Ext4GetFilesystemInfo (
   )
 {
   // Length of s_volume_name + null terminator
-  CHAR16  VolumeName[16 + 1];
-  UINTN   VolNameLength = 0;
+  CHAR16         VolumeName[16 + 1];
+  UINTN          VolNameLength;
+  EFI_STATUS     Status;
+  UINTN          NeededLength;
+  EXT4_BLOCK_NR  TotalBlocks;
+  EXT4_BLOCK_NR  FreeBlocks;
+
+  VolNameLength = 0;
 
   // s_volume_name is only valid on dynamic revision; old filesystems don't support this
   if(Part->SuperBlock.s_rev_level == EXT4_DYNAMIC_REV) {
-    EFI_STATUS  st = AsciiStrnToUnicodeStrS (
-                       (CONST CHAR8 *)Part->SuperBlock.s_volume_name,
-                       16,
-                       VolumeName,
-                       sizeof (VolumeName),
-                       &VolNameLength
-                       );
+    Status = AsciiStrnToUnicodeStrS (
+               (CONST CHAR8 *)Part->SuperBlock.s_volume_name,
+               16,
+               VolumeName,
+               sizeof (VolumeName),
+               &VolNameLength
+               );
 
-    if(st != EFI_SUCCESS) {
-      return st;
+    if(Status != EFI_SUCCESS) {
+      return Status;
     }
   }
 
-  UINTN  NeededLength = SIZE_OF_EFI_FILE_SYSTEM_INFO + StrSize (VolumeName);
+  NeededLength = SIZE_OF_EFI_FILE_SYSTEM_INFO + StrSize (VolumeName);
 
   if(*BufferSize < NeededLength) {
     *BufferSize = NeededLength;
     return EFI_BUFFER_TOO_SMALL;
   }
 
-  EXT4_BLOCK_NR  TotalBlocks = Part->NumberBlocks;
+  TotalBlocks = Part->NumberBlocks;
 
-  EXT4_BLOCK_NR  FreeBlocks = Ext4MakeBlockNumberFromHalfs (
-                                Part,
-                                Part->SuperBlock.s_free_blocks_count,
-                                Part->SuperBlock.s_free_blocks_count_hi
-                                );
+  FreeBlocks = Ext4MakeBlockNumberFromHalfs (
+                 Part,
+                 Part->SuperBlock.s_free_blocks_count,
+                 Part->SuperBlock.s_free_blocks_count_hi
+                 );
 
   Info->BlockSize = Part->BlockSize;
   Info->Size       = NeededLength;
@@ -443,7 +457,7 @@ Ext4GetInfo (
 
    @param[in]        Original    Pointer to the original file.
 
-   @retval EXT4_FILE             Pointer to the new file structure.
+   @return Pointer to the new file structure.
  */
 STATIC
 EXT4_FILE *
@@ -451,8 +465,11 @@ Ext4DuplicateFile (
   IN CONST EXT4_FILE *Original
   )
 {
-  EXT4_PARTITION  *Partition = Original->Partition;
-  EXT4_FILE       *File = AllocateZeroPool (sizeof (EXT4_FILE));
+  EXT4_PARTITION  *Partition;
+  EXT4_FILE       *File;
+
+  Partition = Original->Partition;
+  File = AllocateZeroPool (sizeof (EXT4_FILE));
 
   if (File == NULL) {
     return NULL;

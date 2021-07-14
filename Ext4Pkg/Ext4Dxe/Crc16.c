@@ -1,9 +1,9 @@
 /**
- * @file CRC16 calculation routines.
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file CRC16 calculation routines.
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
 #include <Uefi.h>
@@ -51,16 +51,21 @@ STATIC CONST UINT16  gCrc16LookupTable[256] =
    @param[in]      Length        Length of the buffer, in bytes.
    @param[in]      InitialValue  Initial value of the CRC.
 
-   @retval UINT16   The CRC16 checksum.
+   @return The CRC16 checksum.
 */
 UINT16
 CalculateCrc16 (
-  CONST VOID *Buffer, UINTN Length, UINT16 InitialValue
+  IN CONST VOID *Buffer,
+  IN UINTN Length,
+  IN UINT16 InitialValue
   )
 {
-  CONST UINT8  *Buf = Buffer;
+  CONST UINT8  *Buf;
+  UINT16       Crc;
 
-  UINT16  Crc = ~InitialValue;
+  Buf = Buffer;
+
+  Crc = ~InitialValue;
 
   while(Length-- != 0) {
     Crc = gCrc16LookupTable[(Crc & 0xFF) ^ *(Buf++)] ^ (Crc >> 8);

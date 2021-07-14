@@ -1,74 +1,85 @@
 /**
- * @file Raw filesystem data structures
- *
-  * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Raw filesystem data structures
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
+ 
+  Layout of an EXT2/3/4 filesystem:
+  (note: this driver has been developed using
+   https://www.kernel.org/doc/html/latest/filesystems/ext4/index.html as
+   documentation).
+ 
+  An ext2/3/4 filesystem (here on out referred to as simply an ext4 filesystem,
+  due to the similarities) is composed of various concepts:
+ 
+  1) Superblock
+     The superblock is the structure near (1024 bytes offset from the start)
+     the start of the partition, and describes the filesystem in general.
+     Here, we get to know the size of the filesystem's blocks, which features
+     it supports or not, whether it's been cleanly unmounted, how many blocks
+     we have, etc.
+ 
+  2) Block groups
+     EXT4 filesystems are divided into block groups, and each block group covers
+     s_blocks_per_group(8 * Block Size) blocks. Each block group has an
+     associated block group descriptor; these are present directly after the
+     superblock. Each block group descriptor contains the location of the
+     inode table, and the inode and block bitmaps (note these bitmaps are only
+     a block long, which gets us the 8 * Block Size formula covered previously).
+ 
+  3) Blocks
+     The ext4 filesystem is divided in blocks, of size s_log_block_size ^ 1024.
+     Blocks can be allocated using individual block groups's bitmaps. Note
+     that block 0 is invalid and its presence on extents/block tables means
+     it's part of a file hole, and that particular location must be read as
+     a block full of zeros.
+ 
+  4) Inodes
+     The ext4 filesystem divides files/directories into inodes (originally
+     index nodes). Each file/socket/symlink/directory/etc (here on out referred
+     to as a file, since there is no distinction under the ext4 filesystem) is
+     stored as a /nameless/ inode, that is stored in some block group's inode
+     table. Each inode has s_inode_size size (or GOOD_OLD_INODE_SIZE if it's
+     an old filesystem), and holds various metadata about the file. Since the
+     largest inode structure right now is ~160 bytes, the rest of the inode
+     contains inline extended attributes. Inodes' data is stored using either
+     data blocks (under ext2/3) or extents (under ext4).
+ 
+  5) Extents
+     Ext4 inodes store data in extents. These let N contiguous logical blocks
+     that are represented by N contiguous physical blocks be represented by a
+     single extent structure, which minimizes filesystem metadata bloat and
+     speeds up block mapping (particularly due to the fact that high-quality
+     ext4 implementations like linux's try /really/ hard to make the file
+     contiguous, so it's common to have files with almost 0 fragmentation).
+     Inodes that use extents store them in a tree, and the top of the tree
+     is stored on i_data. The tree's leaves always start with an
+     EXT4_EXTENT_HEADER and contain EXT4_EXTENT_INDEX on eh_depth != 0 and
+     EXT4_EXTENT on eh_depth = 0; these entries are always sorted by logical
+     block.
+ 
+  6) Directories
+     Ext4 directories are files that store name -> inode mappings for the
+     logical directory; this is where files get their names, which means ext4
+     inodes do not themselves have names, since they can be linked (present)
+     multiple times with different names. Directories can store entries in two
+     different ways:
+       1) Classical linear directories: They store entries as a mostly-linked
+          mostly-list of EXT4_DIR_ENTRY.
+       2) Hash tree directories: These are used for larger directories, with
+          hundreds of entries, and are designed in a backwards compatible way.
+          These are not yet implemented in the Ext4Dxe driver.
+ 
+  7) Journal
+     Ext3/4 filesystems have a journal to help protect the filesystem against
+     system crashes. This is not yet implemented in Ext4Dxe but is described
+     in detail in the Linux kernel's documentation.
  */
 
 #ifndef _EXT4_DISK_H
 #define _EXT4_DISK_H
 
 #include <Uefi.h>
-
-/**
- * Layout of an EXT2/3/4 filesystem:
- * (note: this driver has been developed using
- *  https://www.kernel.org/doc/html/latest/filesystems/ext4/index.html as documentation).
- *
- * An ext2/3/4 filesystem (here on out referred to as simply an ext4 filesystem,
- * due to the similarities) is composed of various concepts:
- *
- * 1) Superblock
- *    The superblock is the structure near (1024 bytes offset from the start)
- *    the start of the partition, and describes the filesystem in general. Here,
- *    we get to know the size of the filesystem's blocks, which features it supports or not,
- *    whether it's been cleanly unmounted, how many blocks we have, etc. 
- *
- * 2) Block groups
- *    EXT4 filesystems are divided into block groups, and each block group covers
- *    s_blocks_per_group(8 * Block Size) blocks. Each block group has an associated block
- *    group descriptor; these are present directly after the superblock. Each block group
- *    descriptor contains the location of the inode table, and the inode and block bitmaps
- *    (note these bitmaps are only a block long, which gets us the 8 * Block Size formula covered
- *    previously).
- *
- * 3) Blocks
- *    The ext4 filesystem is divided in blocks, of size s_log_block_size ^ 1024.
- *    Blocks can be allocated using individual block groups's bitmaps. Note that block 0
- *    is invalid and its presence on extents/block tables means it's part of a file hole,
- *    and that particular location must be read as a block full of zeros.
- *
- * 4) Inodes
- *    The ext4 filesystem divides files/directories into inodes (originally index nodes). Each 
- *    file/socket/symlink/directory/etc (here on out referred to as a file, since there is no distinction
- *    under the ext4 filesystem) is stored as a /nameless/ inode, that is stored in some block group's
- *    inode table. Each inode has s_inode_size size (or GOOD_OLD_INODE_SIZE if it's an old filesystem), and
- *    hold various metadata about the file. Since the largest inode structure right now is ~160 bytes,
- *    the rest of the inode contains inline extended attributes. Inodes' data is stored using either data blocks
- *    (under ext2/3) or extents (under ext4).
- *
- * 5) Extents
- *    Ext4 inodes store data in extents. These let N contiguous logical blocks that are represented by N contiguous
- *    physical blocks be represented by a single extent structure, which minimises filesystem metadata bloat and
- *    speeds up block mapping (particularly due to the fact that high-quality ext4 implementations like linux's
- *    try /really/ hard to make the file contiguous, so it's common to have files with almost 0 fragmentation).
- *    Inodes that use extents store them in a tree, and the top of the tree is stored on i_data. The tree's leaves
- *    always start with an EXT4_EXTENT_HEADER and contain EXT4_EXTENT_INDEX on eh_depth != 0 and EXT4_EXTENT on
- *    eh_depth = 0; these entries are always sorted by logical block. 
- *
- * 6) Directories
- *    Ext4 directories are files that store name -> inode mappings for the logical directory; this is where files
- *    get their names, which means ext4 inodes do not themselves have names, since they can be linked (present)
- *    multiple times with different names. Directories can store entries in two different ways:
- *      1) Classical linear directories: They store entries as a mostly-linked mostly-list of EXT4_DIR_ENTRY.
- *      2) Hash tree directories: These are used for larger directories, with hundreds of entries, and are designed
- *         in a backwards compatible way. These are not yet implemented in the Ext4Dxe driver.
- *
- * 7) Journal
- *    Ext3/4 filesystems have a journal to help protect the filesystem against system crashes.
- *    This is not yet implemented in Ext4Dxe but is described in detail in Linux's documentation.
- */
 
 #define EXT4_SUPERBLOCK_OFFSET  1024U
 
@@ -129,8 +140,10 @@
 #define EXT4_FEATURE_RO_COMPAT_BIGALLOC       0x0200
 #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM  0x0400
 #define EXT4_FEATURE_RO_COMPAT_REPLICA        0x0800     // Not used
-#define EXT4_FEATURE_RO_COMPAT_READONLY       0x1000     // We explicitly don't recognise this, so we get read only.
-#define EXT4_FEATURE_RO_COMPAT_PROJECT        0x2000
+
+// We explicitly don't recognise this, so we get read only.
+#define EXT4_FEATURE_RO_COMPAT_READONLY  0x1000
+#define EXT4_FEATURE_RO_COMPAT_PROJECT   0x2000
 
 /* Important notes about the features
  * Absolutely needed features:

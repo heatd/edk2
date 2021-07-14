@@ -1,30 +1,35 @@
 /**
- * @file Driver entry point
- *
- * Copyright (c) 2021 Pedro Falcato All rights reserved.
- *
- *  SPDX-License-Identifier: BSD-2-Clause-Patent
+  @file Driver entry point
+
+  Copyright (c) 2021 Pedro Falcato All rights reserved.
+  SPDX-License-Identifier: BSD-2-Clause-Patent
  */
 
-#include "Ext4.h"
+#include "Ext4Dxe.h"
 
 /**
-   Open an ext4 partition.
+   Opens an ext4 partition and installs the Simple File System protocol.
 
    @param[in]        DeviceHandle     Handle to the block device.
    @param[in]        DiskIo           Pointer to an EFI_DISK_IO_PROTOCOL.
-   @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported. 
+   @param[in opt]    DiskIo2          Pointer to an EFI_DISK_IO2_PROTOCOL, if supported.
    @param[in]        BlockIo          Pointer to an EFI_BLOCK_IO_PROTOCOL.
-   
-   @retval EFI_STATUS    EFI_SUCCESS if the opening was successful.
+
+   @retval EFI_SUCCESS      The opening was successful.
+           !EFI_SUCCESS     Opening failed.
  */
 EFI_STATUS
 Ext4OpenPartition (
-  IN EFI_HANDLE DeviceHandle, IN EFI_DISK_IO_PROTOCOL *DiskIo,
-  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *DiskIo2, IN EFI_BLOCK_IO_PROTOCOL *BlockIo
+  IN EFI_HANDLE DeviceHandle,
+  IN EFI_DISK_IO_PROTOCOL *DiskIo,
+  IN OPTIONAL EFI_DISK_IO2_PROTOCOL *DiskIo2,
+  IN EFI_BLOCK_IO_PROTOCOL *BlockIo
   )
 {
-  EXT4_PARTITION  *Part = AllocateZeroPool (sizeof (*Part));
+  EXT4_PARTITION  *Part;
+  EFI_STATUS      Status;
+
+  Part = AllocateZeroPool (sizeof (*Part));
 
   if(Part == NULL) {
     return EFI_OUT_OF_RESOURCES;
@@ -34,25 +39,25 @@ Ext4OpenPartition (
   Part->DiskIo  = DiskIo;
   Part->DiskIo2 = DiskIo2;
 
-  EFI_STATUS  st = Ext4OpenSuperblock (Part);
+  Status = Ext4OpenSuperblock (Part);
 
-  if(EFI_ERROR (st)) {
+  if(EFI_ERROR (Status)) {
     FreePool (Part);
-    return st;
+    return Status;
   }
 
   Part->Interface.Revision   = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION;
   Part->Interface.OpenVolume = Ext4OpenVolume;
-  st = gBS->InstallMultipleProtocolInterfaces (
-              &DeviceHandle,
-              &gEfiSimpleFileSystemProtocolGuid,
-              &Part->Interface,
-              NULL
-              );
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &DeviceHandle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  &Part->Interface,
+                  NULL
+                  );
 
-  if(EFI_ERROR (st)) {
+  if(EFI_ERROR (Status)) {
     FreePool (Part);
-    return st;
+    return Status;
   }
 
   return EFI_SUCCESS;
@@ -88,7 +93,7 @@ Ext4SetupFile (
 
    @param[in]        Partition        Pointer to the opened partition.
 
-   @retval EFI_STATUS    Status of the unmount.
+   @retval Status of the unmount.
  */
 EFI_STATUS
 Ext4UnmountAndFreePartition (
@@ -96,9 +101,9 @@ Ext4UnmountAndFreePartition (
   )
 {
   Partition->Unmounting = TRUE;
-  Ext4CloseInternal(Partition->Root);
-  FreePool(Partition->BlockGroups);
-  FreePool(Partition);
+  Ext4CloseInternal (Partition->Root);
+  FreePool (Partition->BlockGroups);
+  FreePool (Partition);
 
   return EFI_SUCCESS;
 }
