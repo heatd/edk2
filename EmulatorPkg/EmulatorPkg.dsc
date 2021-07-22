@@ -438,7 +438,7 @@
   }
 
   FatPkg/EnhancedFatDxe/Fat.inf
-  Ext4Pkg/Ext4Dxe/Ext4Dxe.inf
+  Features/Ext4Pkg/Ext4Dxe/Ext4Dxe.inf
 
 !if "XCODE5" not in $(TOOL_CHAIN_TAG)
   ShellPkg/DynamicCommand/TftpDynamicCommand/TftpDynamicCommand.inf {
