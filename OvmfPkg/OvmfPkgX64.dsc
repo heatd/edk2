@@ -180,6 +180,7 @@
   VirtioLib|OvmfPkg/Library/VirtioLib/VirtioLib.inf
   LoadLinuxLib|OvmfPkg/Library/LoadLinuxLib/LoadLinuxLib.inf
   MemEncryptSevLib|OvmfPkg/Library/BaseMemEncryptSevLib/DxeMemEncryptSevLib.inf
+  BaseUcs2Utf8Lib|RedfishPkg/Library/BaseUcs2Utf8Lib/BaseUcs2Utf8Lib.inf
 !if $(SMM_REQUIRE) == FALSE
   LockBoxLib|OvmfPkg/Library/LockBoxLib/LockBoxBaseLib.inf
 !endif
