@@ -59,7 +59,6 @@ Abstract:
 #include <Guid/HobList.h>
 #include <Guid/GlobalVariable.h>
 #include <Guid/EventGroup.h>
-#include <Guid/DebugAgentGuid.h>
 
 #include <OvmfPlatforms.h>
 

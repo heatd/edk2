@@ -57,34 +57,8 @@ VENDOR_DEVICE_PATH    gTerminalTypeDeviceNode    = gPcAnsiTerminal;
 // Debug Agent UART Device Path
 //
 VENDOR_UART_DEVICE_PATH  gDebugAgentUartDevicePath = {
-  {
-    {
-      HARDWARE_DEVICE_PATH,
-      HW_VENDOR_DP,
-      {
-        (UINT8)(sizeof (VENDOR_DEVICE_PATH)),
-        (UINT8)((sizeof (VENDOR_DEVICE_PATH)) >> 8)
-      }
-    },
-    EFI_DEBUG_AGENT_GUID,
-  },
-  {
-    {
-      MESSAGING_DEVICE_PATH,
-      MSG_UART_DP,
-      {
-        (UINT8)(sizeof (UART_DEVICE_PATH)),
-        (UINT8)((sizeof (UART_DEVICE_PATH)) >> 8)
-      }
-    },
-    0,  // Reserved
-    0,  // BaudRate - Default
-    0,  // DataBits - Default
-    0,  // Parity   - Default
-    0,  // StopBits - Default
-  },
   gPcAnsiTerminal,
-  gEndEntire
+  { gEndEntire }
 };
 
 STATIC USB_KEYBOARD_DEVICE_PATH  gUsbKeyboardDevicePath = {

@@ -325,8 +325,6 @@ INF  MdeModulePkg/Universal/Disk/UdfDxe/UdfDxe.inf
 INF  OvmfPkg/VirtioFsDxe/VirtioFsDxe.inf
 
 !if $(BUILD_SHELL) == TRUE && $(TOOL_CHAIN_TAG) != "XCODE5"
-INF  ShellPkg/DynamicCommand/TftpDynamicCommand/TftpDynamicCommand.inf
-INF  ShellPkg/DynamicCommand/HttpDynamicCommand/HttpDynamicCommand.inf
 INF  OvmfPkg/LinuxInitrdDynamicShellCommand/LinuxInitrdDynamicShellCommand.inf
 !endif
 !if $(BUILD_SHELL) == TRUE
@@ -336,17 +334,6 @@ INF  ShellPkg/Application/Shell/Shell.inf
 INF MdeModulePkg/Logo/LogoDxe.inf
 
 INF OvmfPkg/TdxDxe/TdxDxe.inf
-
-#
-# Network modules
-#
-!if $(E1000_ENABLE)
-  FILE DRIVER = 5D695E11-9B3F-4b83-B25F-4A8D5D69BE07 {
-    SECTION PE32 = Intel3.5/EFIX64/E3522X2.EFI
-  }
-!endif
-!include NetworkPkg/Network.fdf.inc
-  INF  OvmfPkg/VirtioNetDxe/VirtioNet.inf
 
 #
 # Usb Support
