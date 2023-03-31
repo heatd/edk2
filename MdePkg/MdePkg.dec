@@ -284,6 +284,10 @@
   #
   ArmTrngLib|Include/Library/ArmTrngLib.h
 
+  ##  @libraryclass  Provides various bits of a C standard library.
+  #
+  LibcLib|MdePkg/Library/LibcLib/LibcLib.inf
+
 [LibraryClasses.IA32, LibraryClasses.X64, LibraryClasses.AARCH64]
   ##  @libraryclass  Provides services to generate random number.
   #

@@ -1,0 +1,39 @@
+## @file
+# ISO C libc implementation for EDK2 modules
+#
+#  Copyright (c) 2023 Pedro Falcato All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = LibcLib
+  FILE_GUID                      = 469201d7-0884-497a-ba93-ec5ee911b0e8
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = LibcLib|BASE
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 AARCH64
+#
+
+[Sources]
+  Internal/errno.c
+  String/strcpy.c
+  String/strcmp.c
+  String/strlen.c
+  String/strchr.c
+  String/memcpy.c
+  String/memset.c
+  String/memchr.c
+  String/memcmp.c
+  Stdlib/strtoul.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib

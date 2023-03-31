@@ -135,6 +135,7 @@
   MdePkg/Library/RegisterFilterLibNull/RegisterFilterLibNull.inf
   MdePkg/Library/CcProbeLibNull/CcProbeLibNull.inf
   MdePkg/Library/SmmCpuRendezvousLibNull/SmmCpuRendezvousLibNull.inf
+  MdePkg/Library/LibcLib/LibcLib.inf
 
 [Components.IA32, Components.X64, Components.ARM, Components.AARCH64]
   #
