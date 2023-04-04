@@ -35,3 +35,7 @@
 [submodule "SecurityPkg/DeviceSecurity/SpdmLib/libspdm"]
 	path = SecurityPkg/DeviceSecurity/SpdmLib/libspdm
 	url = https://github.com/DMTF/libspdm.git
+[submodule "NetworkPkg/Library/DxeSpdkLib/spdk"]
+	path = NetworkPkg/Library/DxeSpdkLib/spdk
+	url = https://github.com/timberland-sig/spdk.git
+	branch = timberland-1.0_final
