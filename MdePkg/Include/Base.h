@@ -931,7 +931,7 @@ STATIC_ASSERT (ALIGNOF (__VERIFY_INT32_ENUM_SIZE) == sizeof (__VERIFY_INT32_ENUM
 
   @return  Addend to round Value up to alignment boundary Alignment.
 **/
-#define ALIGN_VALUE_ADDEND(Value, Alignment)  (((Alignment) - (Value)) & ((Alignment) - 1U))
+#define ALIGN_VALUE_ADDEND(Value, Alignment)  ((-(Value)) & ((Alignment) - 1U))
 
 /**
   Rounds a value up to the next boundary using a specified alignment.
@@ -945,7 +945,7 @@ STATIC_ASSERT (ALIGNOF (__VERIFY_INT32_ENUM_SIZE) == sizeof (__VERIFY_INT32_ENUM
   @return  A value up to the next boundary.
 
 **/
-#define ALIGN_VALUE(Value, Alignment)  ((Value) + ALIGN_VALUE_ADDEND (Value, Alignment))
+#define ALIGN_VALUE(Value, Alignment)  (((Value) + ((Alignment) - 1U)) & ~(Alignment))
 
 /**
   Adjust a pointer by adding the minimum offset required for it to be aligned on
