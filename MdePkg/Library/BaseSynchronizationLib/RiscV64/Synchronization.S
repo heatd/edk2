@@ -28,12 +28,12 @@
 //
 ASM_PFX (InternalSyncCompareExchange32):
 1:
-    lr.w  a3, (a0)        // Load the value from a0 and make
-                          // the reservation of address.
-    bne   a3, a1, exit
-    sc.w  a3, a2, (a0)    // Write the value back to the address.
-    bnez  a3, 1b          // Retry if the sc failed
-    mv    a3, a1
+    lr.w.aqrl  a3, (a0)        // Load the value from a0 and make
+                               // the reservation of address.
+    bne      a3, a1, exit
+    sc.w.rl  a3, a2, (a0)      // Write the value back to the address.
+    bnez     a3, 1b            // Retry if the sc failed
+    mv       a3, a1
 exit:
     mv    a0, a3
     ret
@@ -47,12 +47,12 @@ exit:
 //
 ASM_PFX (InternalSyncCompareExchange64):
 1:
-    lr.d  a3, (a0)       // Load the value from a0 and make
-                         // the reservation of address.
-    bne   a3, a1, exit
-    sc.d  a3, a2, (a0)   // Write the value back to the address.
-    bnez  a3, 1b         // Retry if the sc failed
-    mv    a3, a1
+    lr.d.aqrl  a3, (a0)       // Load the value from a0 and make
+                              // the reservation of address.
+    bne       a3, a1, exit
+    sc.d.rl   a3, a2, (a0)   // Write the value back to the address.
+    bnez      a3, 1b         // Retry if the sc failed
+    mv        a3, a1
 exit2:
     mv    a0, a3
     ret
