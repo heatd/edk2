@@ -1215,8 +1215,8 @@ NvmeOfBuildDevicePath (
 
   CopyMem (
     NvmeOfNode->NvmeOf.NamespaceUuid,
-    Device->NamespaceUuid->u.raw,
-    sizeof (Device->NamespaceUuid->u.raw)
+    &Device->NamespaceUuid,
+    sizeof (EFI_GUID)
     );
   AsciiStrCpyS (
     (CHAR8 *)NvmeOfNode + sizeof (NVMEOF_DEVICE_PATH),
@@ -1862,14 +1862,14 @@ NvmeOfGetDriverImageName (
 /**
   Gets Namespace ID Type
   @param[in] const struct spdk_nvme_ns   *NameSpace,
-  @param[in] const struct spdk_uuid      *NamespaceUuid
+  @param[in] const EFI_GUID              *NamespaceUuid
 
   @retval EFI_SUCCESS                    Return NID type.
 **/
 UINT8
 NvmeOfFindNidType (
   const struct spdk_nvme_ns  *NameSpace,
-  const struct spdk_uuid     *NamespaceUuid
+  const EFI_GUID             *NamespaceUuid
   )
 {
   const struct spdk_nvme_ns_id_desc  *Desc;

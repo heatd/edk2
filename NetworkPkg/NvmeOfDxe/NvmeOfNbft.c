@@ -768,7 +768,7 @@ NvmeOfFillSubsystemNamespaceSection (
     // Fill the NID
     CopyMem (
       SubsystemNamespace->Nid,
-      gNvmeOfNbftList[Index].Device->NamespaceUuid,
+      &gNvmeOfNbftList[Index].Device->NamespaceUuid,
       sizeof (SubsystemNamespace->Nid)
       );
 

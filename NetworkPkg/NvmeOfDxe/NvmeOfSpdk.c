@@ -157,6 +157,7 @@ NvmeOfAttachCallback (
   CHAR8                              Key[10]            = { 0 };
   NVMEOF_CLI_CTRL_MAPPING            *MappingData       = NULL;
   BOOLEAN                            NidToInstall;
+  const struct spdk_uuid            *NamespaceUuid;
 
   Private = (NVMEOF_DRIVER_DATA *)CallbackCtx;
 
@@ -217,13 +218,21 @@ NvmeOfAttachCallback (
     Device->Signature     = NVMEOF_DEVICE_PRIVATE_DATA_SIGNATURE;
     Device->NameSpace     = Namespace;
     Device->NamespaceId   = spdk_nvme_ns_get_id (Namespace);
-    Device->NamespaceUuid = spdk_nvme_ns_get_uuid (Namespace);
-
-    if (Device->NamespaceUuid == NULL) {
-      Device->NamespaceUuid = (struct spdk_uuid *)spdk_nvme_ns_get_nguid (Namespace);
+    NamespaceUuid = spdk_nvme_ns_get_uuid(Namespace);
+    if (NamespaceUuid == NULL) {
+      NamespaceUuid =  (struct spdk_uuid *) spdk_nvme_ns_get_nguid(Namespace);
+      if (!NamespaceUuid) {
+        DEBUG ((DEBUG_ERROR, "nvmeof: Error: Namespace %u has no UUID\n", Nsid));
+        FreePool(Device);
+        continue;
+      }
     }
 
-    Device->NamespaceIdType = NvmeOfFindNidType (Namespace, Device->NamespaceUuid);
+    STATIC_ASSERT(sizeof(EFI_GUID) == sizeof(struct spdk_uuid), "GUID = UUID = 128 bytes");
+
+    CopyMem(&Device->NamespaceUuid, NamespaceUuid, sizeof(EFI_GUID)); 
+
+    Device->NamespaceIdType = NvmeOfFindNidType (Namespace, &Device->NamespaceUuid);
     Device->Controller      = Private;
 
     Device->qpair = spdk_nvme_ctrlr_alloc_io_qpair (Ctrlr, NULL, 0);
@@ -259,8 +268,7 @@ NvmeOfAttachCallback (
     DEBUG ((DEBUG_INFO, "NameSpace Id : %d \n", spdk_nvme_ns_get_id (Namespace)));
     DEBUG ((DEBUG_INFO, "NameSpace flags : %d \n", spdk_nvme_ns_get_flags (Namespace)));
     DEBUG ((DEBUG_INFO, "NameSpace sector_size: %d \n", spdk_nvme_ns_get_sector_size (Namespace)));
-    spdk_uuid_fmt_lower (UuidStr, SPDK_UUID_STRING_LEN, Device->NamespaceUuid);
-    DEBUG ((DEBUG_INFO, "NameSpace UUID: %a\n", UuidStr));
+    DEBUG ((DEBUG_INFO, "NameSpace UUID: %g\n", Device->NamespaceUuid));
     DEBUG ((DEBUG_INFO, "NameSpace extended_sector_size : %d \n", spdk_nvme_ns_get_extended_sector_size (Namespace)));
     DEBUG ((DEBUG_INFO, "NameSpace num_sectors: %d\n", spdk_nvme_ns_get_num_sectors (Namespace)));
 

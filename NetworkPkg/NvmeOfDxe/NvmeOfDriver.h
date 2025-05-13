@@ -189,7 +189,7 @@ typedef struct _NVMEOF_DRIVER_DATA {
 typedef struct _NVMEOF_DEVICE_PRIVATE_DATA {
   UINT32                                   Signature;
   UINT32                                   NamespaceId;
-  const struct spdk_uuid                   *NamespaceUuid;
+  EFI_GUID                                  NamespaceUuid;
   struct spdk_nvme_ns                      *NameSpace;
   struct spdk_nvme_qpair                   *qpair;
   EFI_BLOCK_IO_MEDIA                       Media;

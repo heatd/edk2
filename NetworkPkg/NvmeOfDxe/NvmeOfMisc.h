@@ -528,14 +528,14 @@ NvmeOfGetDriverImageName (
 /**
   Gets Namespace ID Type
   @param[in] const struct spdk_nvme_ns  *NameSpace,
-  @param[in] const struct spdk_uuid     *NamespaceUuid
+  @param[in] const EFI_GUID             *NamespaceUuid
 
   @retval EFI_SUCCESS                   Return NID type.
 **/
 UINT8
 NvmeOfFindNidType (
   const struct spdk_nvme_ns  *NameSpace,
-  const struct spdk_uuid     *NamespaceUuid
+  const EFI_GUID             *NamespaceUuid
   );
 
 /**
