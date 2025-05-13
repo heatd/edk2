@@ -14,7 +14,6 @@
 #include "spdk/uuid.h"
 #include "nvme_internal.h"
 #include "NvmeOfSpdk.h"
-#include "std_string.h"
 
 GLOBAL_REMOVE_IF_UNREFERENCED CONST CHAR8  NvmeOfHexString[] = "0123456789ABCDEFabcdef";
 extern CHAR8                               *gNvmeOfImagePath;
