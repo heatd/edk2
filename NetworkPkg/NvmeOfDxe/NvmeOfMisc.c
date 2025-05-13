@@ -7,6 +7,7 @@
 
 **/
 
+#include "Library/DebugLib.h"
 #include "NvmeOfImpl.h"
 #include "NvmeOfDriver.h"
 #include "spdk/nvme.h"
@@ -1882,13 +1883,19 @@ NvmeOfFindNidType (
       return 0;
     }
 
-    /* Length of uuid/nguid : 16 bytes */
-    NidMatched = CompareMem(Desc->nid, NamespaceUuid, 16) == 0;
-
     if (Offset + Desc->nidl + NID_OFFSET_IN_STRUCT > sizeof (NameSpace->id_desc_list)) {
       /* Descriptor longer than remaining space in list (invalid) */
       return 0;
     }
+
+    if (Desc->nidl != 16) {
+      /* Not a UUID? */
+      DEBUG ((DEBUG_WARN, "nvmeof: Unexpected nidl %u\n", Desc->nidl));
+      return 0;
+    }
+
+    /* Length of uuid/nguid : 16 bytes */
+    NidMatched = CompareMem(Desc->nid, NamespaceUuid, 16) == 0;
 
     Offset += NID_OFFSET_IN_STRUCT + Desc->nidl;
 
