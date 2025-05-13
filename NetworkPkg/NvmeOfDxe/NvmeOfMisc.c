@@ -13,6 +13,7 @@
 #include "spdk/uuid.h"
 #include "nvme_internal.h"
 #include "NvmeOfSpdk.h"
+#include "std_string.h"
 
 GLOBAL_REMOVE_IF_UNREFERENCED CONST CHAR8  NvmeOfHexString[] = "0123456789ABCDEFabcdef";
 extern CHAR8                               *gNvmeOfImagePath;
@@ -1874,7 +1875,6 @@ NvmeOfFindNidType (
   const struct spdk_nvme_ns_id_desc  *Desc;
   UINT32                             Offset     = 0;
   BOOLEAN                            NidMatched = FALSE;
-  UINT8                              Index;
 
   while (Offset + NID_OFFSET_IN_STRUCT < sizeof (NameSpace->id_desc_list)) {
     Desc = (const struct spdk_nvme_ns_id_desc *)&NameSpace->id_desc_list[Offset];
@@ -1883,14 +1883,7 @@ NvmeOfFindNidType (
     }
 
     /* Length of uuid/nguid : 16 bytes */
-    for (Index = 0; Index < 16; Index++) {
-      if ((Desc->nid[Index]) != (NamespaceUuid->u.raw[Index])) {
-        NidMatched = FALSE;
-        break;
-      } else {
-        NidMatched = TRUE;
-      }
-    }
+    NidMatched = CompareMem(Desc->nid, NamespaceUuid, 16) == 0;
 
     if (Offset + Desc->nidl + NID_OFFSET_IN_STRUCT > sizeof (NameSpace->id_desc_list)) {
       /* Descriptor longer than remaining space in list (invalid) */
@@ -1899,7 +1892,7 @@ NvmeOfFindNidType (
 
     Offset += NID_OFFSET_IN_STRUCT + Desc->nidl;
 
-    if (NidMatched == TRUE) {
+    if (NidMatched) {
       return Desc->nidt;
     }
   }
