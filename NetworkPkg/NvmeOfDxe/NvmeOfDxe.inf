@@ -53,8 +53,6 @@
   NvmeOfBlockIo.h
   NvmeOfDeviceInfo.c
   NvmeOfDeviceInfo.h
-  NvmeOfCliInterface.c
-  NvmeOfCliInterface.h
   NvmeOfNbft.c
   NvmeOfNbft.h
 

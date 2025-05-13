@@ -34,7 +34,8 @@ EFI_EVENT                       gBeforeEBSEvent = NULL;
 NVMEOF_PRIVATE_PROTOCOL         NVMEOF_Identifier;
 NVMEOF_NIC_PRIVATE_DATA         *mNicPrivate = NULL;
 LIST_ENTRY                      gNvmeOfControllerList;
-extern NVMEOF_CLI_CTRL_MAPPING  *gCliCtrlMap;
+EFI_HANDLE                      mImageHandle;
+NVMEOF_CLI_CTRL_MAPPING         *gCliCtrlMap      = NULL;
 extern NVMEOF_CLI_CTRL_MAPPING  *CtrlrInfo;
 CHAR8                           *gNvmeOfRootPath    = NULL;
 BOOLEAN                         gAttemtsAlreadyRead = FALSE;
@@ -46,9 +47,11 @@ EFI_GUID  gNvmeOfV6PrivateGuid = NVMEOF_V6_PRIVATE_GUID;
 
 extern EFI_HANDLE                                              mImageHandle;
 extern GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_STRING_TABLE  *gNvmeOfControllerNameTable;
-extern VOID EFIAPI
+VOID EFIAPI
 NvmeOfCliCleanup (
-  );
+  )
+{
+}
 
 EFI_HANDLE  gPassThroughProtocolHandle;
 
@@ -1972,16 +1975,6 @@ NvmeOfDriverUnload (
     DEBUG ((DEBUG_ERROR, "Uninstall multiple protocol for ipv6 failed\n"));
   }
 
-  Status = gBS->UninstallMultipleProtocolInterfaces (
-                  gPassThroughProtocolHandle,
-                  &gEdkiiNvmeofPassThruProtocolGuid,
-                  &gNvmeofPassThroughInstance,
-                  NULL
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "Uninstall multiple protocol for Passthrough failed\n"));
-  }
-
   if (mNicPrivate != NULL) {
     FreePool (mNicPrivate);
   }
@@ -2075,18 +2068,6 @@ NvmeOfDriverEntry (
     DEBUG ((DEBUG_ERROR, "NvmeOfDriverEntry: EfiLibInstallDriverBindingComponentName2 \
        Ipv6 failed\n"));
     goto Error1;
-  }
-
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &gPassThroughProtocolHandle,
-                  &gEdkiiNvmeofPassThruProtocolGuid,
-                  &gNvmeofPassThroughInstance,
-                  NULL
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "NvmeOfDriverEntry: InstallMultipleProtocolInterfaces \
-       passthrough failed\n"));
-    goto Error2;
   }
 
   //

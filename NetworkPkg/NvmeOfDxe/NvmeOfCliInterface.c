@@ -18,8 +18,6 @@
 
 #define CONNECT_TIMEOUT  5000
 
-EFI_HANDLE                      mImageHandle;
-NVMEOF_CLI_CTRL_MAPPING         *gCliCtrlMap      = NULL;
 NVMEOF_CONNECT_COMMAND          *ProbeconnectData = NULL;
 extern NVMEOF_CLI_CTRL_MAPPING  *CtrlrInfo;
 
