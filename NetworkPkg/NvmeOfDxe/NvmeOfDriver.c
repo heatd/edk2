@@ -1372,7 +1372,6 @@ NvmeOfStop (
   NVMEOF_CLI_CTRL_MAPPING              *CtrlrInfoData      = NULL;
 
   gAttemtsAlreadyRead = FALSE;
-  NqnNidMapINdex      = 0;
 
   // Clear Nbft related data
   NvmeofClearNbftData ();

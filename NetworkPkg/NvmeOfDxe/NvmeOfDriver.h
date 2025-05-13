@@ -289,8 +289,6 @@ typedef struct _NVMEOF_NQN_NID {
   UINT8    Nsid[NID_MAX];
   UINT8    NamespaceCount;
 } NVMEOF_NQN_NID;
-extern NVMEOF_NQN_NID  gNvmeOfNqnNidMap[];
-extern UINT8           NqnNidMapINdex;
 
 typedef struct _NVMEOF_NBFT {
   UINT8                            PrimaryHfiIndex;

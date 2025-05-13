@@ -360,11 +360,15 @@ NvmeOfFilterNamespaces (
   discovery NQN. Two variables will be exported: 1-Count of subsystems
   discovred. 2-Array of structures containing the information.
 
+  @param NqnNidMap          Structure contaning subsystem and its namespace ids.
+  @param NrNqn              Number of subsystems discovered.
+
   @return Status  Status returned by SetVariable function.
 **/
 EFI_STATUS
 NvmeOfSetDiscoveryInfo (
-  VOID
+  NVMEOF_NQN_NID  *NqnNidMap,
+  UINT8            NrNqn
   );
 
 /**

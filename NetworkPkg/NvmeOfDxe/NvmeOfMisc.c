@@ -1305,22 +1305,26 @@ NvmeOfFilterNamespaces (
   discovery NQN. Two variables will be exported: 1-Count of subsystems
   discovred. 2-Array of structures containing the information.
 
+  @param NqnNidMap          Structure contaning subsystem and its namespace ids.
+  @param NrNqn              Number of subsystems discovered.
+
   @return Status  Status returned by SetVariable function.
 **/
 EFI_STATUS
 NvmeOfSetDiscoveryInfo (
-  VOID
+  NVMEOF_NQN_NID  *NqnNidMap,
+  UINT8            NrNqn
   )
 {
   EFI_STATUS  Status = EFI_SUCCESS;
 
-  if (NqnNidMapINdex > 0) {
+  if (NrNqn > 0) {
     Status = gRT->SetVariable (
                     L"NvmeOfDiscoverySubsystemCount",
                     &gNvmeOfConfigGuid,
                     EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-                    sizeof (NqnNidMapINdex),
-                    &NqnNidMapINdex
+                    sizeof (NrNqn),
+                    &NrNqn
                     );
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "Error occured while setting NvmeOfDiscoverySubsystemCount\n"));
@@ -1331,8 +1335,8 @@ NvmeOfSetDiscoveryInfo (
                     L"NvmeOfDiscoveryData",
                     &gNvmeOfConfigGuid,
                     EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-                    sizeof (NVMEOF_NQN_NID)*NqnNidMapINdex,
-                    gNvmeOfNqnNidMap
+                    sizeof (NVMEOF_NQN_NID) * NrNqn,
+                    NqnNidMap
                     );
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "Error occured while setting NvmeOfDiscoveryData\n"));

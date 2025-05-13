@@ -3,7 +3,7 @@
 
   Copyright (c) 2021 - 2023 Dell, Inc. or its subsidiaries. All Rights Reserved.<BR>
   Copyright (c) 2022 - 2023, Intel Corporation. All rights reserved.<BR>
-  Copyright (c) 2022, SUSE LLC. All rights reserved.<BR>
+  Copyright (c) 2022 - 2025, SUSE LLC. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -19,9 +19,9 @@
 #include "edk_sock.h"
 #include "NvmeOfCliInterface.h"
 
-NVMEOF_NQN_NID                               gNvmeOfNqnNidMap[MAX_SUBSYSTEMS_SUPPORTED];
 NVMEOF_NBFT                                  gNvmeOfNbftList[NID_MAX];
-UINT8                                        NqnNidMapINdex       = 0;
+STATIC NVMEOF_NQN_NID                               mNvmeOfNqnNidMap[MAX_SUBSYSTEMS_SUPPORTED];
+STATIC UINT8                                        NqnNidMapINdex       = 0;
 UINT8                                        gNvmeOfNbftListIndex = 0;
 extern const struct spdk_nvme_transport_ops  tcp_ops;
 extern struct spdk_net_impl                  g_edksock_net_impl;
@@ -172,7 +172,7 @@ NvmeOfAttachCallback (
 
   // Save the un-filtered map in array
   if (Private->IsDiscoveryNqn) {
-    CopyMem ((gNvmeOfNqnNidMap + NqnNidMapINdex), &NqnNidMap, sizeof (NqnNidMap));
+    CopyMem ((mNvmeOfNqnNidMap + NqnNidMapINdex), &NqnNidMap, sizeof (NqnNidMap));
     NqnNidMapINdex++;
   }
 
@@ -517,7 +517,7 @@ NvmeOfProbeControllers (
   } else {
     DEBUG ((DEBUG_INFO, "Probe Success\n"));
     if (Private->IsDiscoveryNqn) {
-      EFI_STATUS  Status = NvmeOfSetDiscoveryInfo ();
+      EFI_STATUS  Status = NvmeOfSetDiscoveryInfo (mNvmeOfNqnNidMap, NqnNidMapINdex);
       if (EFI_ERROR (Status)) {
         DEBUG ((DEBUG_ERROR, "Unable to set dynamic data to UEFI variable.\n"));
         FreePool (Trid);
